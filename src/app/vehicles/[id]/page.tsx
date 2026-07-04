@@ -143,6 +143,7 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
   const { showToast } = useToast();
 
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
+  const [progressNowMs, setProgressNowMs] = useState(() => Date.now());
   const [plans, setPlans] = useState<MaintenancePlan[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -228,6 +229,7 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
   const fetchData = useCallback(async () => {
     try {
       setApiError(null);
+      setProgressNowMs(Date.now());
 
       // Fetch vehicle
       const vehicleRes = await fetch(`/api/vehicles/${vehicleId}`);
@@ -925,8 +927,7 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
               if (p.lastCompletedAt && p.nextDueAt && p.intervalDays) {
                 const start = new Date(p.lastCompletedAt).getTime();
                 const end = new Date(p.nextDueAt).getTime();
-                const now = Date.now();
-                timeProgress = Math.min(100, Math.max(0, Math.round(((now - start) / (end - start)) * 100)));
+                timeProgress = Math.min(100, Math.max(0, Math.round(((progressNowMs - start) / (end - start)) * 100)));
               }
 
               // Mileage progress: from lastCompletedMileage to nextDueMileage

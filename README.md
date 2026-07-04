@@ -15,10 +15,11 @@
 | Итерация 5 | ReminderRule, Notification Center, worker/cron, дедупликация | ✅ Готово |
 | Итерация 6 | Observations UI/API, PWA иконки, polish, reduced-motion, production build | ✅ Готово |
 
-**Результаты финальных проверок:**
-- ✅ `npx tsc --noEmit` — без ошибок
-- ✅ `npm test` — 37 тестов прошли (7 наборов)
-- ✅ `npm run build` — успешная production сборка
+**Целевое состояние стабилизации:**
+- ✅ `npm run lint`
+- ✅ `npm run typecheck`
+- ✅ `npm run build`
+- ✅ `npm test` (unit + integration, при запущенном PostgreSQL)
 
 ## Навигация по ТЗ
 
@@ -49,23 +50,30 @@
 
 2. **Запуск базы данных в Docker:**
    ```bash
-   docker-compose up -d postgres
+   docker compose up -d postgres
    ```
 
-3. **Запуск миграций и сидирование (заполнение демо-данными):**
+3. **Применение миграций:**
    ```bash
-   npx prisma migrate dev --name init
+   npx prisma migrate deploy
+   ```
+
+4. **Сидирование локального аккаунта:**
+   ```bash
    npx prisma db seed
    ```
+   Будет создан пользователь `owner@autopulse.local` с паролем `autopulse123`.
 
-4. **Запуск Next.js в режиме разработки:**
+5. **Запуск Next.js в режиме разработки:**
    ```bash
    npm run dev
    ```
-   Приложение будет доступно на [http://localhost:3000](http://localhost:3000). Демо-авторизация сработает автоматически (пользователь: `Иван Демидов`, UUID: `00000000-0000-0000-0000-000000000001`).
+   Приложение будет доступно на [http://localhost:3000](http://localhost:3000). Используйте форму входа или зарегистрируйте нового пользователя.
 
-5. **Запуск тестов:**
+6. **Запуск проверок:**
    ```bash
+   npm run lint
+   npm run typecheck
    npm test
    ```
 
@@ -92,13 +100,36 @@ docker-compose up -d --build
 
 ## Известные ограничения MVP
 
-- **Авторизация:** Реализована как демо-авторизация по cookie (userId фиксирован). Полноценная аутентификация (JWT / OAuth) вынесена за рамки MVP.
+- **Авторизация:** Реализован вход и регистрация по `email + password` через JWT-cookie. Вход через Telegram вынесен в следующий этап.
 - **Email/Push уведомления:** Worker создает уведомления в БД, реальная отправка email/push не реализована — только `in_app`.
 - **Загрузка файлов:** Фото чека/симптома принимается как URL-строка (без загрузки файлов на сервер).
 - **Шифрование VIN/госномера:** Хранятся в открытом виде (поле названо `...EncryptedOrMasked` как placeholder).
 - **Мультивалютность:** Интерфейс поддерживает поле `currency`, но все суммы выводятся без конвертации.
 - **Offline режим PWA:** Manifest настроен, service worker не подключен (требует отдельной конфигурации next-pwa).
 - **Telegram уведомления:** Поле `channel` поддерживает `telegram`, но интеграция с ботом не реализована.
+
+## Проверки и тесты
+
+- `npm run lint` — проверка ESLint.
+- `npm run typecheck` — строгая TypeScript-проверка.
+- `npm run test:unit` — быстрые unit-тесты доменной логики.
+- `npm run test:integration` — интеграционные тесты с PostgreSQL. Перед запуском нужен `docker compose up -d postgres`.
+- `npm test` — полный прогон unit + integration.
+
+## Production: Vercel + Supabase
+
+- Приложение рассчитано на деплой в `Vercel`, а PostgreSQL — в `Supabase`.
+- Для Prisma используются две строки подключения:
+  - `DATABASE_URL` — runtime URL. Для Vercel/Supabase используйте pooled connection string.
+  - `DIRECT_URL` — direct connection string для `prisma migrate deploy`, `prisma studio` и других административных операций.
+- Обязательные production env в Vercel:
+  - `DATABASE_URL`
+  - `DIRECT_URL`
+  - `JWT_SECRET`
+  - `CRON_SECRET`
+- Напоминания больше не зависят от постоянного Node worker в production. Вместо этого используется Vercel cron route [src/app/api/cron/notifications/route.ts](/Users/miko/Documents/auto-care-check/src/app/api/cron/notifications/route.ts:1) и расписание из [vercel.json](/Users/miko/Documents/auto-care-check/vercel.json:1).
+- Vercel cron делает `GET` на `/api/cron/notifications`; при наличии `CRON_SECRET` Vercel автоматически отправляет `Authorization: Bearer <CRON_SECRET>`.
+- Локальный `src/worker/cron.ts` остаётся удобным dev-режимом, если нужно погонять напоминания вне Vercel.
 
 ---
 

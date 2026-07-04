@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       return createdVehicle;
     });
 
-    return NextResponse.json({ vehicle }, { status: 211 }); // Using 201 Created (or 211 standard in typical rest endpoints) or just 201. Let's return 201 status or standard 200. Let's return status 201.
+    return NextResponse.json({ vehicle }, { status: 201 });
   } catch (error) {
     console.error('Error creating vehicle:', error);
     return NextResponse.json(

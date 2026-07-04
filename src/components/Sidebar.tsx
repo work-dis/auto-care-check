@@ -2,9 +2,25 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Car, LayoutDashboard, Settings, Bell, Wrench, ClipboardList, Eye, FileClock } from 'lucide-react';
+import { Car, LayoutDashboard, Settings, Bell, Wrench, ClipboardList, Eye, FileClock, LogOut } from 'lucide-react';
 
-export default function Sidebar() {
+interface SidebarUser {
+  email: string;
+  name: string | null;
+}
+
+interface SidebarProps {
+  user: SidebarUser;
+  onLogout: () => void;
+}
+
+function getInitials(user: SidebarUser) {
+  const source = (user.name || user.email).trim();
+  const [first = '', second = ''] = source.split(/\s+/);
+  return `${first[0] || ''}${second[0] || ''}`.toUpperCase() || source.slice(0, 2).toUpperCase();
+}
+
+export default function Sidebar({ user, onLogout }: SidebarProps) {
   const pathname = usePathname();
 
   const links = [
@@ -56,13 +72,21 @@ export default function Sidebar() {
       <div className="border-t border-neutral-900 p-4 bg-[#0e0e10]">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-neutral-800 text-sm font-bold text-neutral-300">
-            ИД
+            {getInitials(user)}
           </div>
           <div className="overflow-hidden">
-            <p className="truncate text-sm font-semibold text-white">Иван Демидов</p>
-            <p className="truncate text-xs text-neutral-500">demo@autopulse.ru</p>
+            <p className="truncate text-sm font-semibold text-white">{user.name || user.email}</p>
+            <p className="truncate text-xs text-neutral-500">{user.email}</p>
           </div>
         </div>
+        <button
+          type="button"
+          onClick={onLogout}
+          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-neutral-800 px-3 py-2 text-sm text-neutral-300 transition-colors hover:border-neutral-700 hover:text-white"
+        >
+          <LogOut className="h-4 w-4" />
+          Выйти
+        </button>
       </div>
     </aside>
   );

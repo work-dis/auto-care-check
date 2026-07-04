@@ -1,46 +1,76 @@
 import { cookies, headers } from 'next/headers';
 import { prisma } from './prisma';
+import { verifyToken } from './jwt';
+import bcrypt from 'bcryptjs';
 
-const DEFAULT_DEMO_USER_ID = '00000000-0000-0000-0000-000000000001';
+const SALT_ROUNDS = 10;
 
-export async function getSessionUserId(): Promise<string> {
-  try {
-    // 1. Check header x-user-id (useful for API routes and testing)
-    const headersList = await headers();
-    const headerUserId = headersList.get('x-user-id');
-    if (headerUserId) {
-      return headerUserId;
-    }
-
-    // 2. Check cookie (useful for browser/UI)
-    const cookieStore = await cookies();
-    const cookieUserId = cookieStore.get('auth_user_id')?.value;
-    if (cookieUserId) {
-      return cookieUserId;
-    }
-  } catch {
-    // cookies() or headers() might throw if called outside request context (e.g. in some build stages or static pages)
-    // We fall back silently in that case
+export class UnauthorizedError extends Error {
+  constructor(message = 'Unauthorized') {
+    super(message);
+    this.name = 'UnauthorizedError';
   }
-
-  // 3. Fallback to env variable or default demo user ID
-  return process.env.DEMO_USER_ID || DEFAULT_DEMO_USER_ID;
 }
 
-export async function getCurrentUser() {
+export async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, SALT_ROUNDS);
+}
+
+export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  return bcrypt.compare(password, hash);
+}
+
+/**
+ * Get the current session user ID from JWT cookie.
+ * The X-User-ID header remains available for isolated route tests.
+ */
+export async function getSessionUserId(): Promise<string> {
+  try {
+    const cookieStore = await cookies();
+    const tokenCookie = cookieStore.get('auth_token')?.value;
+    if (tokenCookie) {
+      const payload = verifyToken(tokenCookie);
+      return payload.userId;
+    }
+  } catch {
+    // Fall through to explicit unauthorized handling below.
+  }
+
+  try {
+    const headersList = await headers();
+    const headerUserId = headersList.get('x-user-id');
+    if (headerUserId && process.env.NODE_ENV === 'test') {
+      return headerUserId;
+    }
+  } catch {
+    // Ignore header lookup outside request context.
+  }
+
+  throw new UnauthorizedError();
+}
+
+/**
+ * Require authenticated user. Returns user or throws.
+ */
+export async function requireUser() {
   const userId = await getSessionUserId();
-  
   const user = await prisma.user.findUnique({
     where: { id: userId },
   });
-
+  if (!user) {
+    throw new UnauthorizedError();
+  }
   return user;
 }
 
-export async function requireUser() {
-  const user = await getCurrentUser();
-  if (!user) {
-    throw new Error('Unauthorized');
+export async function getCurrentUser() {
+  try {
+    return await requireUser();
+  } catch {
+    return null;
   }
-  return user;
+}
+
+export function isUnauthorizedError(error: unknown): error is UnauthorizedError {
+  return error instanceof UnauthorizedError;
 }

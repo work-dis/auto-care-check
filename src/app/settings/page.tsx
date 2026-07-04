@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, Save, ShieldAlert, CheckCircle } from 'lucide-react';
+import { Settings, Save, ShieldAlert } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
 
 export default function SettingsPage() {

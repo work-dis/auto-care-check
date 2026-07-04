@@ -7,13 +7,9 @@ import {
   AlertTriangle,
   Info,
   AlertCircle,
-  Filter,
   RefreshCw,
   Inbox,
   CheckCircle2,
-  Archive,
-  GripVertical,
-  Pencil,
 } from 'lucide-react';
 import { observationSchema } from '@/lib/validation';
 import { useToast } from '@/components/ToastProvider';
@@ -124,11 +120,19 @@ export default function ObservationsPage() {
   }, []);
 
   useEffect(() => {
-    fetchVehicles();
+    const timer = window.setTimeout(() => {
+      void fetchVehicles();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [fetchVehicles]);
 
   useEffect(() => {
-    fetchObservations();
+    const timer = window.setTimeout(() => {
+      void fetchObservations();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [fetchObservations]);
 
   // Local filter

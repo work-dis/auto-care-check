@@ -1,6 +1,7 @@
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 generator client {
@@ -11,6 +12,8 @@ model User {
   id                  String       @id @default(uuid())
   email               String       @unique
   name                String?
+  passwordHash        String    @default("")
+  emailVerifiedAt     DateTime?
   timezone            String       @default("UTC")
   locale              String       @default("ru")
   defaultReminderTime String       @default("09:00")

@@ -7,12 +7,17 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run test:unit && npm run test:integration",
+    "test:unit": "vitest run src/__tests__/status-engine.test.ts src/__tests__/validation.test.ts",
+    "test:integration": "node scripts/check-integration-db.mjs && vitest run src/__tests__/observations.test.ts src/__tests__/odometer-logic.test.ts src/__tests__/ownership.test.ts src/__tests__/reminders.test.ts src/__tests__/service-record.test.ts",
     "worker": "npx tsx src/worker/cron.ts",
     "worker:dev": "npx tsx watch src/worker/cron.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
+    "bcryptjs": "^3.0.3",
+    "jsonwebtoken": "^9.0.3",
     "lucide-react": "^1.23.0",
     "next": "16.2.10",
     "react": "19.2.4",
@@ -21,6 +26,8 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.19.43",
     "@types/react": "^19",
     "@types/react-dom": "^19",

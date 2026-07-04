@@ -137,7 +137,19 @@ export const reminderRuleSchema = z.object({
   isEnabled: z.boolean().default(true),
 });
 
-// 6. User Preferences Validation Schema
+// 6. Auth Validation Schemas
+export const registerSchema = z.object({
+  email: z.string().email('Укажите корректный email'),
+  password: z.string().min(6, 'Пароль должен быть не менее 6 символов'),
+  name: z.string().min(1, 'Укажите ваше имя'),
+});
+
+export const loginSchema = z.object({
+  email: z.string().email('Укажите корректный email'),
+  password: z.string().min(1, 'Введите пароль'),
+});
+
+// 7. User Preferences Validation Schema
 export const userPreferencesSchema = z.object({
   timezone: z.string().min(1, 'Укажите часовой пояс'),
   defaultReminderTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Неверный формат времени (ЧЧ:ММ)'),

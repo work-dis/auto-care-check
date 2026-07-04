@@ -1,25 +1,32 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log('Starting seeding AutoPulse database...');
 
-  // 1. Create Demo User
-  const demoUserId = '00000000-0000-0000-0000-000000000001';
-  const user = await prisma.user.upsert({
-    where: { id: demoUserId },
-    update: {},
-    create: {
-      id: demoUserId,
-      email: 'demo@autopulse.ru',
-      name: 'Иван Демидов',
+  const seededUserEmail = 'owner@autopulse.local';
+  const seededPassword = 'autopulse123';
+
+  // 1. Recreate the seeded owner account with a clean graph.
+  await prisma.user.deleteMany({
+    where: { email: seededUserEmail },
+  });
+
+  const passwordHash = await bcrypt.hash(seededPassword, 10);
+  const user = await prisma.user.create({
+    data: {
+      email: seededUserEmail,
+      name: 'Владелец AutoPulse',
+      passwordHash,
       timezone: 'Europe/Moscow',
       locale: 'ru',
       defaultReminderTime: '09:00',
     },
   });
-  console.log(`Demo User created: ${user.email}`);
+  console.log(`Seed user created: ${user.email}`);
+  console.log(`  Login: ${seededUserEmail} / ${seededPassword}`);
 
   // 2. Create Demo Vehicle
   const vehicle = await prisma.vehicle.create({

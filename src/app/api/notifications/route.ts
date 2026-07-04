@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { getSessionUserId } from '@/lib/auth';
 
@@ -12,7 +13,7 @@ export async function GET(request: NextRequest) {
     const tab = searchParams.get('tab'); // 'active' (default) | 'history' | 'all'
 
     // Build where clause
-    const where: Record<string, unknown> = { userId };
+    const where: Prisma.NotificationWhereInput = { userId };
 
     if (tab === 'history' || tab === 'all') {
       // History: include stale/cancelled; all: include everything
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest) {
     }
 
     const notifications = await prisma.notification.findMany({
-      where: where as any,
+      where,
       orderBy: { createdAt: 'desc' },
       take: limit + 1,
       ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),

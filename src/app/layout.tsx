@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Sidebar from "@/components/Sidebar";
-import BottomNav from "@/components/BottomNav";
-import NotificationBell from "@/components/NotificationBell";
+import AppShell from "@/components/AppShell";
 import { ToastProvider } from "@/components/ToastProvider";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 
@@ -41,21 +39,7 @@ export default function RootLayout({
       <body className="min-h-full bg-[#0a0a0c] text-neutral-100 flex flex-col md:flex-row">
         <ToastProvider>
           <ServiceWorkerRegister />
-          <Sidebar />
-          <div className="flex-1 flex flex-col md:pl-64 min-h-screen pb-16 md:pb-0">
-            <header className="h-16 border-b border-neutral-900 bg-[#0c0c0e]/60 backdrop-blur-md sticky top-0 z-10 flex items-center justify-between px-4 md:px-8">
-              <span className="text-sm font-bold tracking-tight text-neutral-400">
-                Бортовой компьютер
-              </span>
-              <div className="flex items-center gap-4">
-                <NotificationBell />
-              </div>
-            </header>
-            <main className="flex-grow p-4 md:p-8 max-w-7xl w-full mx-auto">
-              {children}
-            </main>
-          </div>
-          <BottomNav />
+          <AppShell>{children}</AppShell>
         </ToastProvider>
       </body>
     </html>

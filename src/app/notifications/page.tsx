@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Bell,
   Check,
@@ -72,7 +72,11 @@ export default function NotificationsPage() {
   );
 
   useEffect(() => {
-    fetchNotifications();
+    const timer = window.setTimeout(() => {
+      void fetchNotifications();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [fetchNotifications]);
 
   const handleMarkRead = async (id: string) => {
@@ -104,7 +108,7 @@ export default function NotificationsPage() {
   const handleLoadMore = () => {
     if (nextCursor && !isLoadingMore) {
       setIsLoadingMore(true);
-      fetchNotifications(nextCursor, true);
+      void fetchNotifications(nextCursor, true);
     }
   };
 

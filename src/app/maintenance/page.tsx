@@ -5,10 +5,6 @@ import Link from 'next/link';
 import {
   Wrench,
   Plus,
-  Filter,
-  AlertTriangle,
-  Clock,
-  Eye,
   CheckCircle2,
   HelpCircle,
   Gauge,
@@ -59,6 +55,9 @@ interface MaintenancePlan {
   nextDueAt?: string | null;
   nextDueMileage?: number | null;
 }
+
+type PlanPriority = 'normal' | 'high' | 'critical';
+type PlanScheduleMode = 'date_only' | 'mileage_only' | 'whichever_comes_first' | 'manual';
 
 type StatusFilter = 'all' | 'overdue' | 'soon' | 'watch' | 'normal' | 'unknown' | 'disabled';
 
@@ -120,8 +119,8 @@ export default function MaintenancePage() {
     title: string;
     description: string;
     kind: string;
-    priority: string;
-    scheduleMode: string;
+    priority: PlanPriority;
+    scheduleMode: PlanScheduleMode;
     intervalDays: number;
     intervalMileage: number;
     soonDaysThreshold: number;
@@ -207,14 +206,22 @@ export default function MaintenancePage() {
   }, []);
 
   useEffect(() => {
-    fetchVehicles();
+    const timer = window.setTimeout(() => {
+      void fetchVehicles();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [fetchVehicles]);
 
   useEffect(() => {
-    if (selectedVehicleId) {
-      fetchPlans(selectedVehicleId);
-      fetchCategories(selectedVehicleId);
-    }
+    if (!selectedVehicleId) return;
+
+    const timer = window.setTimeout(() => {
+      void fetchPlans(selectedVehicleId);
+      void fetchCategories(selectedVehicleId);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [selectedVehicleId, fetchPlans, fetchCategories]);
 
   // Filter plans
@@ -621,10 +628,12 @@ export default function MaintenancePage() {
 
                 {/* Priority */}
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Приоритет</label>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Приоритет</label>
                   <select
                     value={planForm.priority}
-                    onChange={(e) => setPlanForm((prev) => ({ ...prev, priority: e.target.value as any }))}
+                    onChange={(e) =>
+                      setPlanForm((prev) => ({ ...prev, priority: e.target.value as PlanPriority }))
+                    }
                     className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3.5 py-2 text-sm text-white focus:border-teal-500 focus:outline-none"
                   >
                     <option value="normal">Обычный</option>
@@ -639,7 +648,12 @@ export default function MaintenancePage() {
                 <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Режим планирования *</label>
                 <select
                   value={planForm.scheduleMode}
-                  onChange={(e) => setPlanForm((prev) => ({ ...prev, scheduleMode: e.target.value as any }))}
+                  onChange={(e) =>
+                    setPlanForm((prev) => ({
+                      ...prev,
+                      scheduleMode: e.target.value as PlanScheduleMode,
+                    }))
+                  }
                   className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3.5 py-2 text-sm text-white focus:border-teal-500 focus:outline-none"
                 >
                   <option value="whichever_comes_first">Что наступит раньше (дата + пробег)</option>

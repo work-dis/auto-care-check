@@ -4,12 +4,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   FileClock,
-  Filter,
   RefreshCw,
   Inbox,
   FileText,
-  AlertTriangle,
-  Search,
   ArrowRight,
   XCircle,
 } from 'lucide-react';
@@ -108,13 +105,21 @@ export default function HistoryPage() {
   }, []);
 
   useEffect(() => {
-    fetchVehicles();
+    const timer = window.setTimeout(() => {
+      void fetchVehicles();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [fetchVehicles]);
 
   useEffect(() => {
-    if (selectedVehicleId) {
-      fetchRecords(selectedVehicleId);
-    }
+    if (!selectedVehicleId) return;
+
+    const timer = window.setTimeout(() => {
+      void fetchRecords(selectedVehicleId);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [selectedVehicleId, fetchRecords]);
 
   // Filters
