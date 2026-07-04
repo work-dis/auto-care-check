@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: autopulse-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: autopulse
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d autopulse"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    container_name: autopulse-web
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/autopulse?schema=public
+      - PORT=3000
+      - NODE_ENV=production
+      - DEMO_USER_ID=00000000-0000-0000-0000-000000000001
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: deps
+    container_name: autopulse-worker
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/autopulse?schema=public
+      - NODE_ENV=production
+      - DEMO_USER_ID=00000000-0000-0000-0000-000000000001
+    command: ["npx", "tsx", "src/worker/cron.ts"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:

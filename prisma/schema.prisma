@@ -1,0 +1,228 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                  String       @id @default(uuid())
+  email               String       @unique
+  name                String?
+  timezone            String       @default("UTC")
+  locale              String       @default("ru")
+  defaultReminderTime String       @default("09:00")
+  quietHoursStart     String?
+  quietHoursEnd       String?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  vehicles            Vehicle[]
+  notifications       Notification[]
+  auditEvents         AuditEvent[]
+}
+
+model Vehicle {
+  id                           String             @id @default(uuid())
+  userId                       String
+  user                         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName                  String
+  make                         String
+  model                        String
+  year                         Int
+  currentMileage               Int                @default(0)
+  mileageUnit                  String             @default("km") // "km" | "mi"
+  plateNumberEncryptedOrMasked String?
+  vinEncryptedOrMasked         String?
+  fuelType                     String?
+  transmission                 String?
+  engineDescription            String?
+  photoUrl                     String?
+  notes                        String?
+  isPrimary                    Boolean            @default(false)
+  archivedAt                   DateTime?
+  createdAt                    DateTime           @default(now())
+  updatedAt                    DateTime           @updatedAt
+  odometerReadings             OdometerReading[]
+  maintenanceCategories        MaintenanceCategory[]
+  maintenancePlans             MaintenancePlan[]
+  serviceRecords               ServiceRecord[]
+  observations                 Observation[]
+  reminderRules                ReminderRule[]
+  notifications                Notification[]
+}
+
+model OdometerReading {
+  id         String   @id @default(uuid())
+  vehicleId  String
+  vehicle    Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  mileage    Int
+  recordedAt DateTime @default(now())
+  source     String   // "manual" | "service_record" | "import" | "correction"
+  comment    String?
+  createdAt  DateTime @default(now())
+}
+
+model MaintenanceCategory {
+  id               String            @id @default(uuid())
+  vehicleId        String?
+  vehicle          Vehicle?          @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  name             String
+  iconKey          String?
+  sortOrder        Int               @default(0)
+  isSystem         Boolean           @default(false)
+  archivedAt       DateTime?
+  maintenancePlans MaintenancePlan[]
+}
+
+model MaintenancePlan {
+  id                     String                  @id @default(uuid())
+  vehicleId              String
+  vehicle                Vehicle                 @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  categoryId             String
+  category               MaintenanceCategory     @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  title                  String
+  description            String?
+  kind                   String                  // "scheduled_service" | "inspection" | "observation" | "document"
+  priority               String                  @default("normal") // "normal" | "high" | "critical"
+  scheduleMode           String                  // "date_only" | "mileage_only" | "whichever_comes_first" | "manual"
+  intervalDays           Int?
+  intervalMileage        Int?
+  lastCompletedAt        DateTime?
+  lastCompletedMileage   Int?
+  manualDueAt            DateTime?
+  manualDueMileage       Int?
+  soonDaysThreshold      Int                     @default(30)
+  soonMileageThreshold   Int                     @default(1000)
+  watchDaysThreshold     Int                     @default(90)
+  watchMileageThreshold  Int                     @default(3000)
+  manualStatus           String                  @default("auto") // "auto" | "watch" | "resolved"
+  status                 String?                 // cached status value (overdue, soon, watch, normal, unknown, disabled)
+  disabledAt             DateTime?
+  archivedAt             DateTime?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  serviceRecordPlanItems ServiceRecordPlanItem[]
+  reminderRules          ReminderRule[]
+  notifications          Notification[]
+  observations           Observation[]
+}
+
+model ServiceRecord {
+  id             String                  @id @default(uuid())
+  vehicleId      String
+  vehicle        Vehicle                 @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  performedAt    DateTime
+  mileage        Int
+  serviceName    String
+  serviceContact String?
+  laborCost      Decimal                 @default(0) @db.Decimal(12, 2)
+  partsCost      Decimal                 @default(0) @db.Decimal(12, 2)
+  totalCost      Decimal                 @default(0) @db.Decimal(12, 2)
+  currency       String                  @default("RUB")
+  notes          String?
+  receiptUrl     String?
+  state          String                  @default("confirmed") // "confirmed" | "voided" | "draft"
+  voidReason     String?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  planItems      ServiceRecordPlanItem[]
+  parts          ServicePart[]
+  observations   Observation[]
+}
+
+model ServiceRecordPlanItem {
+  id                String           @id @default(uuid())
+  serviceRecordId   String
+  serviceRecord     ServiceRecord    @relation(fields: [serviceRecordId], references: [id], onDelete: Cascade)
+  maintenancePlanId String?
+  maintenancePlan   MaintenancePlan? @relation(fields: [maintenancePlanId], references: [id], onDelete: SetNull)
+  titleSnapshot     String
+  categorySnapshot  String
+  actionType        String           @default("completed") // "completed" | "inspected" | "repaired" | "note"
+  costSnapshot      Decimal          @default(0) @db.Decimal(12, 2)
+}
+
+model ServicePart {
+  id              String        @id @default(uuid())
+  serviceRecordId String
+  serviceRecord   ServiceRecord @relation(fields: [serviceRecordId], references: [id], onDelete: Cascade)
+  nameSnapshot    String
+  article         String?
+  quantity        Decimal       @default(1) @db.Decimal(10, 3)
+  unit            String        @default("pcs")
+  unitPrice       Decimal       @default(0) @db.Decimal(12, 2)
+  totalPrice      Decimal       @default(0) @db.Decimal(12, 2)
+  currency        String        @default("RUB")
+}
+
+model Observation {
+  id                String         @id @default(uuid())
+  vehicleId         String
+  vehicle           Vehicle        @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  maintenancePlanId String? // optional link to a specific plan (e.g. brakes plan)
+  maintenancePlan   MaintenancePlan? @relation(fields: [maintenancePlanId], references: [id], onDelete: SetNull)
+  title             String
+  description       String?
+  priority          String         @default("normal") // "normal" | "high" | "critical"
+  state             String         @default("open") // "open" | "watching" | "service_planned" | "closed"
+  createdAt         DateTime       @default(now())
+  closedAt          DateTime?
+  photoUrl          String?
+  serviceRecordId   String?
+  serviceRecord     ServiceRecord? @relation(fields: [serviceRecordId], references: [id], onDelete: SetNull)
+  reminderRules     ReminderRule[]
+}
+
+model ReminderRule {
+  id                String           @id @default(uuid())
+  vehicleId         String?
+  vehicle           Vehicle?         @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  maintenancePlanId String?
+  maintenancePlan   MaintenancePlan? @relation(fields: [maintenancePlanId], references: [id], onDelete: Cascade)
+  observationId     String?
+  observation       Observation?     @relation(fields: [observationId], references: [id], onDelete: Cascade)
+  triggerType       String           // "days_before" | "mileage_before" | "due_date" | "due_mileage" | "overdue_repeat" | "exact_datetime"
+  triggerValue      String?
+  scheduledAt       DateTime?
+  channel           String           @default("in_app") // "in_app" | "email" | "push" | "telegram"
+  sendAtLocalTime   String           @default("09:00")
+  isEnabled         Boolean          @default(true)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  notifications     Notification[]
+}
+
+model Notification {
+  id                String           @id @default(uuid())
+  userId            String
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vehicleId         String
+  vehicle           Vehicle          @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  reminderRuleId    String?
+  reminderRule      ReminderRule?    @relation(fields: [reminderRuleId], references: [id], onDelete: SetNull)
+  maintenancePlanId String?
+  maintenancePlan   MaintenancePlan? @relation(fields: [maintenancePlanId], references: [id], onDelete: Cascade)
+  title             String
+  body              String
+  severity          String           @default("normal") // "normal" | "warning" | "critical"
+  status            String           @default("pending") // "pending" | "sent" | "failed" | "cancelled" | "stale"
+  scheduledFor      DateTime?
+  sentAt            DateTime?
+  readAt            DateTime?
+  dedupeKey         String           @unique
+  createdAt         DateTime         @default(now())
+}
+
+model AuditEvent {
+  id         String   @id @default(uuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  entityType String
+  entityId   String
+  action     String
+  beforeJson String?
+  afterJson  String?
+  createdAt  DateTime @default(now())
+}
