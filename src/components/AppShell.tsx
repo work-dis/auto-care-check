@@ -78,7 +78,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [loadUser]);
 
   if (isAuthRoute) {
-    return <>{children}</>;
+    return <div className="flex-1">{children}</div>;
   }
 
   if (isLoading || !user) {
@@ -109,9 +109,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 {getInitials(user)}
               </div>
               <div className="min-w-0">
-              <div className="truncate text-sm font-semibold text-neutral-100">{displayName}</div>
-              <div className="truncate text-xs text-neutral-500">{user.email}</div>
-            </div>
+                <div className="truncate text-sm font-semibold text-neutral-100">{displayName}</div>
+                <div className="truncate text-xs text-neutral-500">{user.email}</div>
+              </div>
             </div>
             <div className="md:hidden">
               <UserCircle2 className="h-5 w-5 text-neutral-500" />
