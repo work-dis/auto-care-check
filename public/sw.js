@@ -1,24 +1,34 @@
-const CACHE_NAME = 'autopulse-v1';
+const CACHE_NAME = 'autopulse-static-v2';
 
 const PRECACHE_URLS = [
-  '/',
-  '/dashboard',
-  '/maintenance',
-  '/notifications',
-  '/history',
-  '/observations',
-  '/settings',
   '/manifest.json',
+  '/favicon.ico',
+  '/icon-192x192.png',
+  '/icon-512x512.png',
 ];
 
-// Install: precache core routes
+function isStaticAssetRequest(request, url) {
+  return (
+    request.destination === 'script' ||
+    request.destination === 'style' ||
+    request.destination === 'image' ||
+    request.destination === 'font' ||
+    url.pathname === '/manifest.json' ||
+    url.pathname.startsWith('/_next/static/')
+  );
+}
+
+// Install: precache only immutable app assets.
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(PRECACHE_URLS);
-    }).then(() => {
-      self.skipWaiting();
-    })
+    caches
+      .open(CACHE_NAME)
+      .then((cache) => {
+        return cache.addAll(PRECACHE_URLS);
+      })
+      .then(() => {
+        self.skipWaiting();
+      })
   );
 });
 
@@ -37,7 +47,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch: network-first for pages, stale-while-revalidate for static assets
+// Fetch: cache-first for static assets only. Avoid caching HTML/API responses.
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -45,43 +55,27 @@ self.addEventListener('fetch', (event) => {
   // Only handle same-origin requests
   if (url.origin !== self.location.origin) return;
 
-  // Don't cache API mutations
+  // Ignore non-GET requests.
   if (request.method !== 'GET') return;
 
-  // Static assets: cache-first
-  if (
-    url.pathname.match(/\.(js|css|png|jpg|jpeg|svg|ico|woff2?)$/) ||
-    url.pathname.startsWith('/_next/static/')
-  ) {
-    event.respondWith(
-      caches.match(request).then((cached) => {
-        return cached || fetch(request).then((response) => {
-          const cloned = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, cloned));
-          return response;
-        });
-      })
-    );
-    return;
-  }
+  // Leave navigations and API requests on the network to avoid stale UI/data.
+  if (request.mode === 'navigate' || url.pathname.startsWith('/api/')) return;
 
-  // Pages & API GET requests: network-first with fallback
+  if (!isStaticAssetRequest(request, url)) return;
+
   event.respondWith(
-    fetch(request)
-      .then((response) => {
+    caches.match(request).then((cached) => {
+      if (cached) return cached;
+
+      return fetch(request).then((response) => {
+        if (!response.ok) {
+          return response;
+        }
+
         const cloned = response.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(request, cloned));
         return response;
-      })
-      .catch(() => {
-        return caches.match(request).then((cached) => {
-          if (cached) return cached;
-          // If it's a navigation request, serve the shell
-          if (request.mode === 'navigate') {
-            return caches.match('/');
-          }
-          return new Response('Offline', { status: 503 });
-        });
-      })
+      });
+    })
   );
 });
