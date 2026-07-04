@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Car, LayoutDashboard, Settings, Bell, Wrench, ClipboardList, Eye, FileClock, LogOut } from 'lucide-react';
+import { Car, LayoutDashboard, Settings, Bell, Wrench, ClipboardList, Eye, FileClock } from 'lucide-react';
 
 interface SidebarUser {
   email: string;
@@ -11,7 +11,6 @@ interface SidebarUser {
 
 interface SidebarProps {
   user: SidebarUser;
-  onLogout: () => void;
 }
 
 function getInitials(user: SidebarUser) {
@@ -20,7 +19,7 @@ function getInitials(user: SidebarUser) {
   return `${first[0] || ''}${second[0] || ''}`.toUpperCase() || source.slice(0, 2).toUpperCase();
 }
 
-export default function Sidebar({ user, onLogout }: SidebarProps) {
+export default function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
 
   const links = [
@@ -79,14 +78,6 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
             <p className="truncate text-xs text-neutral-500">{user.email}</p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={onLogout}
-          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-neutral-800 px-3 py-2 text-sm text-neutral-300 transition-colors hover:border-neutral-700 hover:text-white"
-        >
-          <LogOut className="h-4 w-4" />
-          Выйти
-        </button>
       </div>
     </aside>
   );

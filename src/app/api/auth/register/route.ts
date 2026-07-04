@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { hashPassword } from '@/lib/auth';
+import { hashPassword, isLegacyAccountEmail } from '@/lib/auth';
 import { signToken } from '@/lib/jwt';
 import { registerSchema } from '@/lib/validation';
 
@@ -22,6 +22,13 @@ export async function POST(request: NextRequest) {
     }
 
     const { email, password, name } = validation.data;
+
+    if (isLegacyAccountEmail(email)) {
+      return NextResponse.json(
+        { error: { code: 'RESERVED_EMAIL', message: 'Этот email зарезервирован и недоступен для регистрации' } },
+        { status: 400 }
+      );
+    }
 
     // Check if user already exists
     const existing = await prisma.user.findUnique({ where: { email } });

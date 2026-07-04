@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, Save, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, LogOut, Settings, ShieldAlert, Trash2, Save } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
 
 export default function SettingsPage() {
   const { showToast } = useToast();
   const [formData, setFormData] = useState({
+    email: '',
+    name: '',
     timezone: 'UTC',
     defaultReminderTime: '09:00',
     quietHoursStart: '',
@@ -15,6 +17,9 @@ export default function SettingsPage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteConfirmValue, setDeleteConfirmValue] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -25,6 +30,8 @@ export default function SettingsPage() {
           const data = await res.json();
           if (data.user) {
             setFormData({
+              email: data.user.email || '',
+              name: data.user.name || '',
               timezone: data.user.timezone || 'UTC',
               defaultReminderTime: data.user.defaultReminderTime || '09:00',
               quietHoursStart: data.user.quietHoursStart || '',
@@ -75,6 +82,58 @@ export default function SettingsPage() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } finally {
+      window.location.assign('/login');
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmValue !== formData.email) {
+      setErrors((prev) => ({
+        ...prev,
+        deleteAccount: 'Введите email аккаунта точно, чтобы подтвердить удаление.',
+      }));
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.deleteAccount;
+        return next;
+      });
+
+      const response = await fetch('/api/me', {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        setErrors((prev) => ({
+          ...prev,
+          deleteAccount: data.error?.message || 'Не удалось удалить аккаунт',
+        }));
+        return;
+      }
+
+      showToast('Аккаунт удалён', 'success');
+      window.location.assign('/login');
+    } catch (error) {
+      console.error(error);
+      setErrors((prev) => ({
+        ...prev,
+        deleteAccount: 'Сетевая ошибка при удалении аккаунта',
+      }));
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex h-96 items-center justify-center">
@@ -103,10 +162,10 @@ export default function SettingsPage() {
       <div>
         <h1 className="text-3xl font-extrabold text-white flex items-center gap-3">
           <Settings className="h-8 w-8 text-teal-400" />
-          Настройки оповещений
+          Настройки аккаунта
         </h1>
         <p className="mt-2 text-sm text-neutral-400 leading-relaxed">
-          Настройте часовой пояс, тихие часы и стандартное время отправки уведомлений о регламентных работах вашего автомобиля.
+          Управляйте профилем, уведомлениями и действиями аккаунта. Опасные действия спрятаны внизу страницы.
         </p>
       </div>
 
@@ -118,6 +177,41 @@ export default function SettingsPage() {
             <span>{errors.general}</span>
           </div>
         )}
+
+        <div className="rounded-xl border border-neutral-850 bg-[#121214] p-6 space-y-4">
+          <div>
+            <h2 className="text-sm font-bold text-white">Профиль</h2>
+            <p className="mt-1 text-xs text-neutral-400">
+              Базовая информация текущего аккаунта.
+            </p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">
+                Имя
+              </label>
+              <input
+                type="text"
+                value={formData.name}
+                readOnly
+                className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3.5 py-2 text-sm text-neutral-400 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">
+                Email
+              </label>
+              <input
+                type="email"
+                value={formData.email}
+                readOnly
+                className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3.5 py-2 text-sm text-neutral-400 focus:outline-none"
+              />
+            </div>
+          </div>
+        </div>
 
         {/* Panel Container */}
         <div className="rounded-xl border border-neutral-850 bg-[#121214] p-6 space-y-5">
@@ -209,6 +303,65 @@ export default function SettingsPage() {
           </button>
         </div>
       </form>
+
+      <div className="rounded-xl border border-neutral-850 bg-[#121214] p-6 space-y-4">
+        <div>
+          <h2 className="text-sm font-bold text-white">Сеанс</h2>
+          <p className="mt-1 text-xs text-neutral-400">
+            Выход из аккаунта перенесён сюда и больше не показывается в общей навигации.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+          className="inline-flex items-center gap-2 rounded-lg border border-neutral-800 px-4 py-2.5 text-sm font-semibold text-neutral-200 transition-colors hover:border-neutral-700 hover:text-white disabled:opacity-60"
+        >
+          <LogOut className="h-4 w-4" />
+          {isLoggingOut ? 'Выход...' : 'Выйти из аккаунта'}
+        </button>
+      </div>
+
+      <div className="rounded-xl border border-red-500/20 bg-red-950/10 p-6 space-y-4">
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 shrink-0 text-red-400 mt-0.5" />
+          <div>
+            <h2 className="text-sm font-bold text-red-300">Опасная зона</h2>
+            <p className="mt-1 text-xs text-red-200/80">
+              Удаление аккаунта необратимо. Будут удалены автомобили, планы ТО, записи обслуживания, observations и уведомления.
+            </p>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-red-200/80 mb-1.5">
+            Для подтверждения введите email аккаунта
+          </label>
+          <input
+            type="email"
+            value={deleteConfirmValue}
+            onChange={(e) => setDeleteConfirmValue(e.target.value)}
+            placeholder={formData.email || 'your@email.com'}
+            className="w-full rounded-lg border border-red-500/20 bg-neutral-950 px-3.5 py-2 text-sm text-white placeholder:text-neutral-600 focus:border-red-400 focus:outline-none"
+          />
+          {errors.deleteAccount && (
+            <p className="mt-2 text-xs text-red-300">{errors.deleteAccount}</p>
+          )}
+        </div>
+
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={handleDeleteAccount}
+            disabled={isDeleting}
+            className="inline-flex items-center gap-2 rounded-lg bg-red-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-400 disabled:opacity-60"
+          >
+            <Trash2 className="h-4 w-4" />
+            {isDeleting ? 'Удаление...' : 'Удалить аккаунт'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

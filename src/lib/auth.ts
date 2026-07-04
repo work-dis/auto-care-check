@@ -4,6 +4,7 @@ import { verifyToken } from './jwt';
 import bcrypt from 'bcryptjs';
 
 const SALT_ROUNDS = 10;
+const LEGACY_ACCOUNT_EMAILS = new Set(['demo@autopulse.ru', 'owner@autopulse.local']);
 
 export class UnauthorizedError extends Error {
   constructor(message = 'Unauthorized') {
@@ -18,6 +19,11 @@ export async function hashPassword(password: string): Promise<string> {
 
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
   return bcrypt.compare(password, hash);
+}
+
+export function isLegacyAccountEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  return LEGACY_ACCOUNT_EMAILS.has(email.toLowerCase());
 }
 
 /**
@@ -58,6 +64,14 @@ export async function requireUser() {
     where: { id: userId },
   });
   if (!user) {
+    throw new UnauthorizedError();
+  }
+  if (isLegacyAccountEmail(user.email)) {
+    await prisma.user.delete({
+      where: { id: user.id },
+    }).catch(() => {
+      // Ignore cleanup race if the legacy user was already removed.
+    });
     throw new UnauthorizedError();
   }
   return user;

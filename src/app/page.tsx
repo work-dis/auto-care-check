@@ -1,9 +1,21 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { isLegacyAccountEmail } from '@/lib/auth';
+import { verifyToken } from '@/lib/jwt';
 
 export default async function Home() {
   const cookieStore = await cookies();
-  const hasToken = cookieStore.has('auth_token');
+  const token = cookieStore.get('auth_token')?.value;
+  let hasToken = false;
+
+  if (token) {
+    try {
+      const payload = verifyToken(token);
+      hasToken = !isLegacyAccountEmail(payload.email);
+    } catch {
+      hasToken = false;
+    }
+  }
 
   if (hasToken) {
     redirect('/dashboard');

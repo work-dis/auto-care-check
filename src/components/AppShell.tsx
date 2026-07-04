@@ -1,6 +1,6 @@
 'use client';
 
-import { LogOut, UserCircle2 } from 'lucide-react';
+import { UserCircle2 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import BottomNav from '@/components/BottomNav';
@@ -77,15 +77,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return () => window.clearTimeout(timer);
   }, [loadUser]);
 
-  const handleLogout = useCallback(async () => {
-    try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-    } finally {
-      setUser(null);
-      window.location.assign('/login');
-    }
-  }, []);
-
   if (isAuthRoute) {
     return <>{children}</>;
   }
@@ -105,7 +96,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <Sidebar user={user} onLogout={handleLogout} />
+      <Sidebar user={user} />
       <div className="flex-1 flex flex-col md:pl-64 min-h-screen pb-16 md:pb-0">
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-neutral-900 bg-[#0c0c0e]/60 px-4 backdrop-blur-md md:px-8">
           <span className="text-sm font-bold tracking-tight text-neutral-400">
@@ -118,18 +109,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 {getInitials(user)}
               </div>
               <div className="min-w-0">
-                <div className="truncate text-sm font-semibold text-neutral-100">{displayName}</div>
-                <div className="truncate text-xs text-neutral-500">{user.email}</div>
-              </div>
+              <div className="truncate text-sm font-semibold text-neutral-100">{displayName}</div>
+              <div className="truncate text-xs text-neutral-500">{user.email}</div>
             </div>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="inline-flex items-center gap-2 rounded-lg border border-neutral-800 px-3 py-2 text-sm text-neutral-300 transition-colors hover:border-neutral-700 hover:text-white"
-            >
-              <LogOut className="h-4 w-4" />
-              <span className="hidden sm:inline">Выйти</span>
-            </button>
+            </div>
             <div className="md:hidden">
               <UserCircle2 className="h-5 w-5 text-neutral-500" />
             </div>

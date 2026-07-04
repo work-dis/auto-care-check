@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { verifyPassword } from '@/lib/auth';
+import { isLegacyAccountEmail, verifyPassword } from '@/lib/auth';
 import { signToken } from '@/lib/jwt';
 import { loginSchema } from '@/lib/validation';
 
@@ -24,6 +24,13 @@ export async function POST(request: NextRequest) {
     const { email, password } = validation.data;
 
     const user = await prisma.user.findUnique({ where: { email } });
+    if (user && isLegacyAccountEmail(user.email)) {
+      await prisma.user.delete({
+        where: { id: user.id },
+      }).catch(() => {
+        // Ignore cleanup race if the legacy user was already removed.
+      });
+    }
     if (!user || !user.passwordHash) {
       return NextResponse.json(
         { error: { code: 'INVALID_CREDENTIALS', message: 'Неверный email или пароль' } },

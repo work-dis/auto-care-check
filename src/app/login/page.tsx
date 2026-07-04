@@ -78,7 +78,7 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="owner@autopulse.local"
+              placeholder="you@example.com"
               className={`w-full bg-neutral-900/80 border ${fieldErrors.email ? 'border-red-600' : 'border-neutral-800'} rounded-lg px-4 py-2.5 text-neutral-100 placeholder-neutral-600 focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500/60 transition-colors`}
               required
               autoFocus

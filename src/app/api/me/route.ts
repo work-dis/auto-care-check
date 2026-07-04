@@ -100,3 +100,41 @@ export async function PATCH(request: NextRequest) {
     );
   }
 }
+
+export async function DELETE() {
+  try {
+    const user = await requireUser();
+
+    await prisma.auditEvent.create({
+      data: {
+        userId: user.id,
+        entityType: 'User',
+        entityId: user.id,
+        action: 'DELETE_ACCOUNT',
+        beforeJson: JSON.stringify(serializeUser(user)),
+      },
+    });
+
+    await prisma.user.delete({
+      where: { id: user.id },
+    });
+
+    const response = NextResponse.json({ success: true });
+    response.cookies.delete('auth_token');
+    response.cookies.delete('auth_user_id');
+    return response;
+  } catch (error) {
+    if (isUnauthorizedError(error)) {
+      return NextResponse.json(
+        { error: { code: 'UNAUTHORIZED', message: 'Требуется авторизация' } },
+        { status: 401 }
+      );
+    }
+
+    console.error('Error deleting user account:', error);
+    return NextResponse.json(
+      { error: { code: 'SERVER_ERROR', message: 'Ошибка сервера при удалении аккаунта' } },
+      { status: 500 }
+    );
+  }
+}

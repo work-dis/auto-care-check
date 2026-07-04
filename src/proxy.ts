@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isLegacyAccountEmail } from '@/lib/auth';
 import { verifyToken } from '@/lib/jwt';
 
 const PUBLIC_PAGE_ROUTES = new Set(['/login', '/register']);
@@ -29,8 +30,8 @@ export function proxy(request: NextRequest) {
 
   if (token) {
     try {
-      verifyToken(token);
-      hasSession = true;
+      const payload = verifyToken(token);
+      hasSession = !isLegacyAccountEmail(payload.email);
     } catch {
       hasSession = false;
     }
