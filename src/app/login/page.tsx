@@ -60,7 +60,10 @@ export default function LoginPage() {
         </div>
 
         {/* Login Form */}
-        <form onSubmit={handleSubmit} className="bg-[#0c0c0e] border border-neutral-800 rounded-xl p-6 space-y-5">
+        <form
+          onSubmit={handleSubmit}
+          className="bg-[#0c0c0e] border border-neutral-800 rounded-xl p-6 space-y-5 shadow-[0_24px_80px_rgba(0,0,0,0.32)]"
+        >
           <h2 className="text-lg font-semibold text-neutral-200 text-center">Вход в систему</h2>
 
           {error && (
@@ -123,8 +126,9 @@ export default function LoginPage() {
         </form>
 
         {/* Demo hint */}
-        <div className="mt-4 text-center">
-          <p className="text-xs text-neutral-600">
+        <div className="mt-4 rounded-xl border border-neutral-800/80 bg-neutral-950/70 px-4 py-3 text-center">
+          <p className="text-xs uppercase tracking-[0.2em] text-neutral-600">Доступ</p>
+          <p className="mt-1 text-sm text-neutral-400">
             Войдите под своим зарегистрированным аккаунтом
           </p>
         </div>
