@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyToken } from '@/lib/jwt';
 
 const PUBLIC_PAGE_ROUTES = new Set(['/login', '/register']);
 const PUBLIC_API_PREFIXES = ['/api/auth/login', '/api/auth/register', '/api/auth/logout'];
@@ -23,12 +24,30 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const hasSession = Boolean(request.cookies.get('auth_token')?.value);
+  const token = request.cookies.get('auth_token')?.value;
+  let hasSession = false;
+
+  if (token) {
+    try {
+      verifyToken(token);
+      hasSession = true;
+    } catch {
+      hasSession = false;
+    }
+  }
 
   if (PUBLIC_PAGE_ROUTES.has(pathname)) {
     if (hasSession) {
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
+
+    if (token) {
+      const response = NextResponse.next();
+      response.cookies.delete('auth_token');
+      response.cookies.delete('auth_user_id');
+      return response;
+    }
+
     return NextResponse.next();
   }
 
@@ -55,7 +74,12 @@ export function proxy(request: NextRequest) {
   if (!hasSession) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirect', `${pathname}${search}`);
-    return NextResponse.redirect(loginUrl);
+    const response = NextResponse.redirect(loginUrl);
+    if (token) {
+      response.cookies.delete('auth_token');
+      response.cookies.delete('auth_user_id');
+    }
+    return response;
   }
 
   return NextResponse.next();

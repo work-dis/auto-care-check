@@ -82,10 +82,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       await fetch('/api/auth/logout', { method: 'POST' });
     } finally {
       setUser(null);
-      router.push('/login');
-      router.refresh();
+      window.location.assign('/login');
     }
-  }, [router]);
+  }, []);
 
   if (isAuthRoute) {
     return <>{children}</>;

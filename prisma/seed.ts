@@ -8,8 +8,13 @@ async function main() {
 
   const seededUserEmail = 'owner@autopulse.local';
   const seededPassword = 'autopulse123';
+  const legacyDemoEmail = 'demo@autopulse.ru';
 
-  // 1. Recreate the seeded owner account with a clean graph.
+  // 1. Recreate the seeded owner account with a clean graph and remove the legacy demo user.
+  await prisma.user.deleteMany({
+    where: { email: legacyDemoEmail },
+  });
+
   await prisma.user.deleteMany({
     where: { email: seededUserEmail },
   });
