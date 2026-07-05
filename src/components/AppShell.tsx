@@ -78,7 +78,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [loadUser]);
 
   if (isAuthRoute) {
-    return <div className="flex-1">{children}</div>;
+    return (
+      <div className="flex-1 min-h-dvh flex items-center justify-center">
+        {children}
+      </div>
+    );
   }
 
   if (isLoading || !user) {

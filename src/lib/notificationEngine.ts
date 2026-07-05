@@ -1,5 +1,6 @@
 import { prisma } from './prisma';
 import { calculatePlanStatus } from './statusEngine';
+import { webPush, type PushPayload } from './webPush';
 
 export function calculateScheduledTime(
   now: Date,
@@ -43,6 +44,79 @@ export function calculateScheduledTime(
   return now;
 }
 
+/**
+ * Send a browser push notification for a given notification record.
+ * Looks up all active push subscriptions for the user and sends via web-push.
+ */
+async function sendPushNotification(notification: {
+  id: string;
+  userId: string;
+  vehicleId: string;
+  title: string;
+  body: string;
+}): Promise<void> {
+  try {
+    const subscriptions = await prisma.pushSubscription.findMany({
+      where: { userId: notification.userId },
+    });
+
+    if (subscriptions.length === 0) return;
+
+    const payload: PushPayload = {
+      title: notification.title,
+      body: notification.body,
+      icon: '/icon-192x192.png',
+      badge: '/icon-192x192.png',
+      data: {
+        url: '/dashboard',
+        notificationId: notification.id,
+        vehicleId: notification.vehicleId,
+      },
+    };
+
+    const payloadString = JSON.stringify(payload);
+
+    const results = await Promise.allSettled(
+      subscriptions.map((sub) =>
+        webPush.sendNotification(
+          {
+            endpoint: sub.endpoint,
+            keys: { p256dh: sub.p256dh, auth: sub.auth },
+          },
+          payloadString
+        )
+      )
+    );
+
+    // Clean up invalid subscriptions
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i];
+      if (result.status === 'rejected') {
+        const err = result.reason;
+        // WebPushError with statusCode 410 (Gone) or 404 — subscription expired/invalid
+        if (
+          err &&
+          typeof err === 'object' &&
+          'statusCode' in err &&
+          (err.statusCode === 410 || err.statusCode === 404)
+        ) {
+          try {
+            await prisma.pushSubscription.delete({
+              where: { endpoint: subscriptions[i].endpoint },
+            });
+          } catch {
+            // Race condition — already deleted
+          }
+        } else {
+          console.error(`[Push] Failed to send to ${subscriptions[i].endpoint.slice(0, 50)}...:`, err);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('[Push] sendPushNotification error:', error);
+  }
+}
+
 export async function checkAndGenerateNotifications() {
   const now = new Date();
 
@@ -64,6 +138,14 @@ export async function checkAndGenerateNotifications() {
   });
 
   let createdCount = 0;
+  const sentNotifications: Array<{
+    id: string;
+    userId: string;
+    vehicleId: string;
+    title: string;
+    body: string;
+    channel: string;
+  }> = [];
 
   for (const rule of activeRules) {
     if (!rule.vehicle || !rule.vehicle.user) continue;
@@ -195,8 +277,10 @@ export async function checkAndGenerateNotifications() {
         user.quietHoursEnd
       );
 
+      const isSent = scheduledFor.getTime() <= now.getTime();
+
       try {
-        await prisma.notification.create({
+        const notification = await prisma.notification.create({
           data: {
             userId: user.id,
             vehicleId: vehicle.id,
@@ -205,19 +289,41 @@ export async function checkAndGenerateNotifications() {
             title,
             body,
             severity,
-            status: scheduledFor.getTime() <= now.getTime() ? 'sent' : 'pending',
+            status: isSent ? 'sent' : 'pending',
             scheduledFor,
-            sentAt: scheduledFor.getTime() <= now.getTime() ? now : null,
+            sentAt: isSent ? now : null,
             dedupeKey,
           },
         });
         createdCount++;
+
+        // If the notification was sent immediately and channel is push-capable, send via web-push
+        if (isSent && (rule.channel === 'push' || rule.channel === 'in_app')) {
+          sentNotifications.push({
+            id: notification.id,
+            userId: user.id,
+            vehicleId: vehicle.id,
+            title,
+            body,
+            channel: rule.channel,
+          });
+        }
       } catch (e: unknown) {
         // Unique constraint error means notification is already created (deduplicated)
         if (typeof e === 'object' && e !== null && 'code' in e && (e as { code: string }).code !== 'P2002') {
           console.error(`Failed to create notification for rule ${rule.id}:`, e);
         }
       }
+    }
+  }
+
+  // Send push notifications asynchronously (don't block the cron response)
+  if (sentNotifications.length > 0) {
+    // Fire and forget — errors are logged inside sendPushNotification
+    for (const n of sentNotifications) {
+      sendPushNotification(n).catch((err) =>
+        console.error(`[Push] Error sending push for notification ${n.id}:`, err)
+      );
     }
   }
 

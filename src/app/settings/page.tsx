@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { AlertTriangle, LogOut, Settings, ShieldAlert, Trash2, Save } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
+import PushNotificationButton from '@/components/PushNotificationButton';
 
 export default function SettingsPage() {
   const { showToast } = useToast();
@@ -83,12 +84,10 @@ export default function SettingsPage() {
   };
 
   const handleLogout = async () => {
-    try {
-      setIsLoggingOut(true);
-      await fetch('/api/auth/logout', { method: 'POST' });
-    } finally {
-      window.location.assign('/login');
-    }
+    setIsLoggingOut(true);
+    // Clear auth cookie by overwriting with past expiry
+    document.cookie = 'auth_token=; path=/; max-age=0';
+    window.location.assign('/login');
   };
 
   const handleDeleteAccount = async () => {
@@ -288,6 +287,17 @@ export default function SettingsPage() {
                 {errors.quietHoursEnd && <p className="mt-1 text-xs text-red-400">{errors.quietHoursEnd}</p>}
               </div>
             </div>
+          </div>
+
+          {/* Push Notifications */}
+          <div className="border-t border-neutral-900 pt-5 space-y-4">
+            <div>
+              <h3 className="text-sm font-bold text-white">Push-уведомления</h3>
+              <p className="mt-1 text-xs text-neutral-400">
+                Получайте уведомления о приближающемся ТО в браузере, даже когда вкладка закрыта.
+              </p>
+            </div>
+            <PushNotificationButton />
           </div>
         </div>
 

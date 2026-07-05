@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isLegacyAccountEmail } from '@/lib/auth';
 import { verifyToken } from '@/lib/jwt';
 
-const PUBLIC_PAGE_ROUTES = new Set(['/login', '/register']);
-const PUBLIC_API_PREFIXES = ['/api/auth/login', '/api/auth/register', '/api/auth/logout'];
+const PUBLIC_PAGE_ROUTES = new Set(['/login']);
+const PUBLIC_API_PREFIXES = ['/api/auth/telegram'];
 
 function isPublicApiRoute(pathname: string) {
   return PUBLIC_API_PREFIXES.some((route) => pathname.startsWith(route));

@@ -13,6 +13,8 @@ model User {
   email               String       @unique
   name                String?
   passwordHash        String    @default("")
+  telegramId          String?      @unique
+  telegramAvatarUrl   String?
   emailVerifiedAt     DateTime?
   timezone            String       @default("UTC")
   locale              String       @default("ru")
@@ -23,6 +25,7 @@ model User {
   updatedAt           DateTime     @updatedAt
   vehicles            Vehicle[]
   notifications       Notification[]
+  pushSubscriptions   PushSubscription[]
   auditEvents         AuditEvent[]
 }
 
@@ -216,6 +219,17 @@ model Notification {
   readAt            DateTime?
   dedupeKey         String           @unique
   createdAt         DateTime         @default(now())
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
 }
 
 model AuditEvent {

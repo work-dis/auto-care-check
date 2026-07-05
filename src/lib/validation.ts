@@ -149,7 +149,12 @@ export const loginSchema = z.object({
   password: z.string().min(1, 'Введите пароль'),
 });
 
-// 7. User Preferences Validation Schema
+// 8. Telegram Auth Validation Schema
+export const telegramAuthSchema = z.object({
+  initData: z.string().min(1, 'initData обязателен'),
+});
+
+// 8. User Preferences Validation Schema
 export const userPreferencesSchema = z.object({
   timezone: z.string().min(1, 'Укажите часовой пояс'),
   defaultReminderTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Неверный формат времени (ЧЧ:ММ)'),
@@ -157,7 +162,7 @@ export const userPreferencesSchema = z.object({
   quietHoursEnd: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Неверный формат времени (ЧЧ:ММ)').nullable().optional(),
 });
 
-// 7. Observation Validation Schema
+// 9. Observation Validation Schema
 export const observationSchema = z.object({
   title: z.string().min(1, 'Укажите название наблюдения'),
   description: z.string().nullable().optional(),

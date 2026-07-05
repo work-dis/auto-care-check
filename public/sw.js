@@ -79,3 +79,64 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+
+// Push event: receive and display the notification
+self.addEventListener('push', (event) => {
+  let data;
+
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = {};
+  }
+
+  const title = data.title || 'AutoPulse';
+  const options = {
+    body: data.body || '',
+    icon: data.icon || '/icon-192x192.png',
+    badge: data.badge || '/icon-192x192.png',
+    data: data.data || {},
+    vibrate: [200, 100, 200],
+    tag: data.data?.notificationId || 'autopulse-notification',
+    requireInteraction: data.data?.requireInteraction || true,
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(title, options)
+  );
+});
+
+// Notification click event: open the URL
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  const urlToOpen = event.notification.data?.url || '/dashboard';
+
+  event.waitUntil(
+    self.clients.matchAll({
+      type: 'window',
+      includeUncontrolled: true,
+    }).then((windowClients) => {
+      // If there's already a window/tab open with the app, focus it
+      for (const client of windowClients) {
+        if (client.url.startsWith(self.location.origin) && 'focus' in client) {
+          // Navigate to the target URL
+          return client.navigate(urlToOpen).then((navigatedClient) => {
+            if (navigatedClient) {
+              return navigatedClient.focus();
+            }
+            return client.focus();
+          }).catch(() => {
+            // If navigate fails (e.g. on same-origin), just focus
+            return client.focus();
+          });
+        }
+      }
+
+      // Otherwise, open a new window/tab
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(urlToOpen);
+      }
+    })
+  );
+});
