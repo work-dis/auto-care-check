@@ -36,7 +36,7 @@ export default function RootLayout({
       lang="ru"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-[#0a0a0c] text-neutral-100 flex flex-col md:flex-row">
+      <body className="min-h-full bg-[#0a0a0c] text-neutral-100 flex flex-col">
         <ToastProvider>
           <ServiceWorkerRegister />
           <AppShell>{children}</AppShell>

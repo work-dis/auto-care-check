@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 
 declare global {
   interface Window {
@@ -24,8 +25,51 @@ export default function LoginForm() {
   const searchParams = useSearchParams();
   const [error, setError] = useState('');
   const [tgLoading, setTgLoading] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const widgetRef = useRef<HTMLDivElement>(null);
   const callbackRegistered = useRef(false);
+
+  const botUsername =
+    typeof window !== 'undefined'
+      ? process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
+      : '';
+
+  async function handleEmailLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    setFieldErrors({});
+    setEmailLoading(true);
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (data.error?.fieldErrors) {
+          setFieldErrors(data.error.fieldErrors);
+        } else {
+          setError(data.error?.message || 'Ошибка входа');
+        }
+        return;
+      }
+
+      const redirectTarget = searchParams.get('redirect') || '/dashboard';
+      router.push(redirectTarget);
+      router.refresh();
+    } catch {
+      setError('Ошибка соединения с сервером');
+    } finally {
+      setEmailLoading(false);
+    }
+  }
 
   async function handleTelegramAuth(initData: string) {
     setTgLoading(true);
@@ -86,7 +130,6 @@ export default function LoginForm() {
       handleTelegramAuth(params.toString());
     };
 
-    const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME;
     if (botUsername && widgetRef.current && !widgetRef.current.querySelector('script')) {
       const script = document.createElement('script');
       script.async = true;
@@ -98,59 +141,112 @@ export default function LoginForm() {
       widgetRef.current.appendChild(script);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const botUsername =
-    typeof window !== 'undefined'
-      ? process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
-      : '';
+  }, [botUsername]);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0c] flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md flex flex-col justify-center flex-1">
-        {/* Logo / Branding */}
-        <div className="text-center mb-8 pt-8 md:pt-0">
-          <div className="text-4xl mb-2">⚡</div>
-          <h1 className="text-2xl font-bold text-neutral-100">AutoPulse</h1>
-          <p className="text-neutral-500 text-sm mt-1">
-            Цифровой бортовой журнал автомобиля
-          </p>
-        </div>
-
-        <div className="bg-[#0c0c0e] border border-neutral-800 rounded-xl p-6 shadow-[0_24px_80px_rgba(0,0,0,0.32)]">
-          <h2 className="text-lg font-semibold text-neutral-200 text-center mb-6">
-            Вход через Telegram
-          </h2>
-
-          {error && (
-            <div className="bg-red-900/30 border border-red-800/50 text-red-400 text-sm rounded-lg px-4 py-3 mb-4">
-              {error}
-            </div>
-          )}
-
-          {tgLoading && (
-            <div className="bg-teal-900/30 border border-teal-800/50 text-teal-400 text-sm rounded-lg px-4 py-3 mb-4">
-              Выполняется вход через Telegram...
-            </div>
-          )}
-
-          {botUsername ? (
-            <div className="flex justify-center" ref={widgetRef} id="telegram-login-widget" />
-          ) : (
-            <p className="text-neutral-500 text-sm text-center">
-              Telegram Bot не настроен. Укажите <code className="text-teal-400">NEXT_PUBLIC_TELEGRAM_BOT_USERNAME</code>.
-            </p>
-          )}
-        </div>
+    <div className="w-full max-w-md">
+      {/* Logo / Branding */}
+      <div className="text-center mb-8">
+        <div className="text-4xl mb-2">⚡</div>
+        <h1 className="text-2xl font-bold text-neutral-100">AutoPulse</h1>
+        <p className="text-neutral-500 text-sm mt-1">
+          Цифровой бортовой журнал автомобиля
+        </p>
       </div>
 
-      <div className="w-full max-w-md mt-auto pb-4">
-        <div className="rounded-xl border border-neutral-800/80 bg-neutral-950/70 px-4 py-3 text-center">
-          <p className="text-xs uppercase tracking-[0.2em] text-neutral-600">AutoPulse</p>
-          <p className="mt-1 text-sm text-neutral-400">
-            Войдите через Telegram для доступа к бортовому журналу
-          </p>
+      <div className="bg-[#0c0c0e] border border-neutral-800 rounded-xl p-6 shadow-[0_24px_80px_rgba(0,0,0,0.32)]">
+        <h2 className="text-lg font-semibold text-neutral-200 text-center mb-6">
+          Вход
+        </h2>
+
+        {error && (
+          <div className="bg-red-900/30 border border-red-800/50 text-red-400 text-sm rounded-lg px-4 py-3 mb-4">
+            {error}
+          </div>
+        )}
+
+        {tgLoading && (
+          <div className="bg-teal-900/30 border border-teal-800/50 text-teal-400 text-sm rounded-lg px-4 py-3 mb-4">
+            Выполняется вход через Telegram...
+          </div>
+        )}
+
+        {/* Email/Password Form */}
+        <form onSubmit={handleEmailLogin} className="space-y-4">
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-neutral-400 mb-1.5">
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              placeholder="user@example.ru"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className={`w-full rounded-lg border bg-neutral-900/50 px-3.5 py-2.5 text-sm text-neutral-100 placeholder-neutral-600 outline-none transition-colors ${
+                fieldErrors.email
+                  ? 'border-red-500 focus:border-red-500'
+                  : 'border-neutral-800 focus:border-teal-500'
+              }`}
+            />
+            {fieldErrors.email && (
+              <p className="text-red-400 text-xs mt-1">{fieldErrors.email}</p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-neutral-400 mb-1.5">
+              Пароль
+            </label>
+            <input
+              id="password"
+              type="password"
+              placeholder="••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className={`w-full rounded-lg border bg-neutral-900/50 px-3.5 py-2.5 text-sm text-neutral-100 placeholder-neutral-600 outline-none transition-colors ${
+                fieldErrors.password
+                  ? 'border-red-500 focus:border-red-500'
+                  : 'border-neutral-800 focus:border-teal-500'
+              }`}
+            />
+            {fieldErrors.password && (
+              <p className="text-red-400 text-xs mt-1">{fieldErrors.password}</p>
+            )}
+          </div>
+
+          <button
+            type="submit"
+            disabled={emailLoading}
+            className="w-full rounded-lg bg-teal-500 px-4 py-2.5 text-sm font-semibold text-black transition-all hover:bg-teal-400 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {emailLoading ? 'Вход...' : 'Войти'}
+          </button>
+        </form>
+
+        <div className="mt-4 text-center text-sm text-neutral-500">
+          Нет аккаунта?{' '}
+          <Link href="/register" className="text-teal-400 hover:text-teal-300 transition-colors">
+            Зарегистрироваться
+          </Link>
         </div>
+
+        {/* Telegram Login — показываем только если настроен бот */}
+        {botUsername && (
+          <div className="mt-6 pt-4 border-t border-neutral-800">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-neutral-800" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-[#0c0c0e] px-2 text-neutral-600">или войти через</span>
+              </div>
+            </div>
+            <div className="mt-4">
+              <div className="flex justify-center" ref={widgetRef} id="telegram-login-widget" />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

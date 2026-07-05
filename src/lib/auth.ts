@@ -4,7 +4,7 @@ import { verifyToken } from './jwt';
 import bcrypt from 'bcryptjs';
 
 const SALT_ROUNDS = 10;
-const LEGACY_ACCOUNT_EMAILS = new Set(['demo@autopulse.ru', 'owner@autopulse.local']);
+const LEGACY_ACCOUNT_EMAILS = new Set(['owner@autopulse.local']);
 
 export class UnauthorizedError extends Error {
   constructor(message = 'Unauthorized') {
