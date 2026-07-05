@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/jwt';
 
-const PUBLIC_PAGE_ROUTES = new Set(['/login']);
+const PUBLIC_PAGE_ROUTES = new Set(['/login', '/register']);
 const PUBLIC_API_PREFIXES = ['/api/auth/login', '/api/auth/register', '/api/auth/telegram'];
 
 function isPublicApiRoute(pathname: string) {

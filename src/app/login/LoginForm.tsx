@@ -32,10 +32,11 @@ export default function LoginForm() {
   const widgetRef = useRef<HTMLDivElement>(null);
   const callbackRegistered = useRef(false);
 
-  const botUsername =
-    typeof window !== 'undefined'
-      ? process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
-      : '';
+  const [botUsername, setBotUsername] = useState('');
+
+  useEffect(() => {
+    setBotUsername(process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || '');
+  }, []);
 
   async function handleUsernameLogin(e: React.FormEvent) {
     e.preventDefault();
