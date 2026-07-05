@@ -139,7 +139,7 @@ export const reminderRuleSchema = z.object({
 
 // 6. Auth Validation Schemas
 export const registerSchema = z.object({
-  username: z.string().min(3, 'Логин должен быть не менее 3 символов').max(32, 'Логин слишком длинный').regex(/^[a-zA-Z0-9_-]+$/, 'Только латиница, цифры, _ и -'),
+  username: z.string().min(3, 'Логин должен быть не менее 3 символов').max(32, 'Логин не более 32 символов').regex(/^[a-zA-Z0-9_]+$/, 'Только латиница, цифры и _'),
   password: z.string().min(6, 'Пароль должен быть не менее 6 символов'),
   name: z.string().min(1, 'Укажите ваше имя'),
 });
