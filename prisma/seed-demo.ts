@@ -5,11 +5,13 @@ const prisma = new PrismaClient();
 
 async function main() {
   const email = 'demo@autopulse.ru';
-  let user = await prisma.user.findUnique({ where: { email } });
+  const username = 'demo';
+  let user = await prisma.user.findUnique({ where: { username } });
   if (!user) {
     const passwordHash = await hashPassword('demo123');
     user = await prisma.user.create({
       data: {
+        username,
         email,
         name: 'Иван Демидов',
         passwordHash,

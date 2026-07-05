@@ -313,6 +313,10 @@ export async function checkAndGenerateNotifications() {
 
           // Email delivery
           if (rule.channel === 'email' && isEmailConfigured()) {
+            if (!user.email) {
+              console.warn(`Skipping email: user ${user.id} has no email`);
+              continue;
+            }
             const emailHtml = buildReminderHtml({
               title,
               body,
