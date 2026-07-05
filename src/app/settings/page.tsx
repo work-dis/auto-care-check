@@ -156,7 +156,7 @@ export default function SettingsPage() {
   ];
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6 max-w-2xl pb-24 md:pb-10">
       <div>
         <h1 className="text-3xl font-extrabold text-white flex items-center gap-3">
           <Settings className="h-8 w-8 text-teal-400" />
