@@ -1,8 +1,7 @@
 {
-  "crons": [
-    {
-      "path": "/api/cron/notifications",
-      "schedule": "0 9 * * *"
-    }
-  ]
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "prisma generate && next build",
+  "outputDirectory": ".next",
+  "installCommand": "npm install",
+  "framework": "nextjs"
 }

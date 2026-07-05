@@ -1,6 +1,13 @@
 import { checkAndGenerateNotifications } from '../lib/notificationEngine';
 import { prisma } from '../lib/prisma';
 
+// On Vercel, this worker is not used — notifications are handled
+// by the Vercel Cron Job at /api/cron/notifications
+if (process.env.VERCEL === '1') {
+  console.log('[Worker] Running on Vercel — cron worker disabled, using Vercel Cron instead');
+  process.exit(0);
+}
+
 const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 const GRACEFUL_SHUTDOWN_TIMEOUT_MS = 10_000; // 10s
 
