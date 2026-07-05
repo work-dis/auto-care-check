@@ -1,6 +1,7 @@
 import { prisma } from './prisma';
 import { calculatePlanStatus } from './statusEngine';
 import { webPush, type PushPayload } from './webPush';
+import { sendEmail, isEmailConfigured, buildReminderHtml } from './email';
 
 export function calculateScheduledTime(
   now: Date,
@@ -297,16 +298,42 @@ export async function checkAndGenerateNotifications() {
         });
         createdCount++;
 
-        // If the notification was sent immediately and channel is push-capable, send via web-push
-        if (isSent && (rule.channel === 'push' || rule.channel === 'in_app')) {
-          sentNotifications.push({
-            id: notification.id,
-            userId: user.id,
-            vehicleId: vehicle.id,
-            title,
-            body,
-            channel: rule.channel,
-          });
+        // If the notification was sent immediately, deliver via appropriate channel
+        if (isSent) {
+          if (rule.channel === 'push' || rule.channel === 'in_app') {
+            sentNotifications.push({
+              id: notification.id,
+              userId: user.id,
+              vehicleId: vehicle.id,
+              title,
+              body,
+              channel: rule.channel,
+            });
+          }
+
+          // Email delivery
+          if (rule.channel === 'email' && isEmailConfigured()) {
+            const emailHtml = buildReminderHtml({
+              title,
+              body,
+              vehicleName: vehicle.displayName,
+              planName: plan.title,
+              severity,
+            });
+            sendEmail({
+              to: user.email,
+              subject: `AutoPulse — ${title}`,
+              text: body,
+              html: emailHtml,
+            }).then((ok) => {
+              if (!ok) {
+                prisma.notification.update({
+                  where: { id: notification.id },
+                  data: { status: 'failed' },
+                }).catch(() => {});
+              }
+            });
+          }
         }
       } catch (e: unknown) {
         // Unique constraint error means notification is already created (deduplicated)

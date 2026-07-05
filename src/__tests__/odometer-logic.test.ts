@@ -8,11 +8,12 @@ describe('Odometer Business Logic Integration Tests', () => {
   beforeAll(async () => {
     // 1. Create a test user
     const user = await prisma.user.create({
-      data: {
-        email: 'test-odo-logic@example.com',
-        name: 'Odo Test User',
-      },
-    });
+        data: {
+          email: 'test-odo-logic@example.com',
+          name: 'Odo Test User',
+          username: 'odo_test',
+        },
+      });
     userId = user.id;
 
     // 2. Create a test vehicle

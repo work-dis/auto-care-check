@@ -139,13 +139,13 @@ export const reminderRuleSchema = z.object({
 
 // 6. Auth Validation Schemas
 export const registerSchema = z.object({
-  email: z.string().email('Укажите корректный email'),
+  username: z.string().min(3, 'Логин должен быть не менее 3 символов').max(32, 'Логин слишком длинный').regex(/^[a-zA-Z0-9_-]+$/, 'Только латиница, цифры, _ и -'),
   password: z.string().min(6, 'Пароль должен быть не менее 6 символов'),
   name: z.string().min(1, 'Укажите ваше имя'),
 });
 
 export const loginSchema = z.object({
-  email: z.string().email('Укажите корректный email'),
+  username: z.string().min(1, 'Введите логин'),
   password: z.string().min(1, 'Введите пароль'),
 });
 

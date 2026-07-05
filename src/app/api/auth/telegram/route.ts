@@ -101,21 +101,21 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
       // Create new user with telegram login
-      const email = `tg_${telegramId}@autopulse.local`;
+      const username = `tg_${telegramId}`;
 
-      // Check if email somehow already exists (collision edge case)
-      const existingByEmail = await prisma.user.findUnique({ where: { email } });
-      if (existingByEmail) {
+      // Check if username somehow already exists (collision edge case)
+      const existingByUsername = await prisma.user.findUnique({ where: { username } });
+      if (existingByUsername) {
         // Very unlikely, but handle gracefully
         return NextResponse.json(
-          { error: { code: 'EMAIL_COLLISION', message: 'Конфликт при создании пользователя' } },
+          { error: { code: 'USERNAME_COLLISION', message: 'Конфликт при создании пользователя' } },
           { status: 409 }
         );
       }
 
       user = await prisma.user.create({
         data: {
-          email,
+          username,
           name,
           telegramId,
           telegramAvatarUrl: photoUrl,
@@ -131,10 +131,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const token = signToken({ userId: user.id, email: user.email });
+    const token = signToken({ userId: user.id, username: user.username });
 
     const response = NextResponse.json({
-      user: { id: user.id, email: user.email, name: user.name, telegramAvatarUrl: user.telegramAvatarUrl },
+      user: { id: user.id, username: user.username, name: user.name, telegramAvatarUrl: user.telegramAvatarUrl },
       token,
     });
 

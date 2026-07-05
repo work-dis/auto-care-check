@@ -8,7 +8,7 @@ import PushNotificationButton from '@/components/PushNotificationButton';
 export default function SettingsPage() {
   const { showToast } = useToast();
   const [formData, setFormData] = useState({
-    email: '',
+    username: '',
     name: '',
     timezone: 'UTC',
     defaultReminderTime: '09:00',
@@ -31,7 +31,7 @@ export default function SettingsPage() {
           const data = await res.json();
           if (data.user) {
             setFormData({
-              email: data.user.email || '',
+              username: data.user.username || '',
               name: data.user.name || '',
               timezone: data.user.timezone || 'UTC',
               defaultReminderTime: data.user.defaultReminderTime || '09:00',
@@ -85,16 +85,15 @@ export default function SettingsPage() {
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
-    // Clear auth cookie by overwriting with past expiry
     document.cookie = 'auth_token=; path=/; max-age=0';
     window.location.assign('/login');
   };
 
   const handleDeleteAccount = async () => {
-    if (deleteConfirmValue !== formData.email) {
+    if (deleteConfirmValue !== formData.username) {
       setErrors((prev) => ({
         ...prev,
-        deleteAccount: 'Введите email аккаунта точно, чтобы подтвердить удаление.',
+        deleteAccount: 'Введите логин аккаунта точно, чтобы подтвердить удаление.',
       }));
       return;
     }
@@ -200,11 +199,11 @@ export default function SettingsPage() {
 
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">
-                Email
+                Логин
               </label>
               <input
-                type="email"
-                value={formData.email}
+                type="text"
+                value={formData.username}
                 readOnly
                 className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3.5 py-2 text-sm text-neutral-400 focus:outline-none"
               />
@@ -326,7 +325,7 @@ export default function SettingsPage() {
           type="button"
           onClick={handleLogout}
           disabled={isLoggingOut}
-          className="inline-flex items-center gap-2 rounded-lg border border-neutral-800 px-4 py-2.5 text-sm font-semibold text-neutral-200 transition-colors hover:border-neutral-700 hover:text-white disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-lg border border-neutral-800 px-4 py-2.5 text-sm font-semibold text-neutral-200 transition-colors hover:border-neutral-700 hover:text-white disabled:opacity-60 cursor-pointer"
         >
           <LogOut className="h-4 w-4" />
           {isLoggingOut ? 'Выход...' : 'Выйти из аккаунта'}
@@ -346,13 +345,13 @@ export default function SettingsPage() {
 
         <div>
           <label className="block text-xs font-semibold uppercase tracking-wider text-red-200/80 mb-1.5">
-            Для подтверждения введите email аккаунта
+            Для подтверждения введите логин аккаунта
           </label>
           <input
-            type="email"
+            type="text"
             value={deleteConfirmValue}
             onChange={(e) => setDeleteConfirmValue(e.target.value)}
-            placeholder={formData.email || 'your@email.com'}
+            placeholder={formData.username || 'ivan123'}
             className="w-full rounded-lg border border-red-500/20 bg-neutral-950 px-3.5 py-2 text-sm text-white placeholder:text-neutral-600 focus:border-red-400 focus:outline-none"
           />
           {errors.deleteAccount && (
@@ -365,7 +364,7 @@ export default function SettingsPage() {
             type="button"
             onClick={handleDeleteAccount}
             disabled={isDeleting}
-            className="inline-flex items-center gap-2 rounded-lg bg-red-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-400 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-lg bg-red-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-400 disabled:opacity-60 cursor-pointer"
           >
             <Trash2 className="h-4 w-4" />
             {isDeleting ? 'Удаление...' : 'Удалить аккаунт'}

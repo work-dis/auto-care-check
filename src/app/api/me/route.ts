@@ -5,21 +5,25 @@ import { userPreferencesSchema } from '@/lib/validation';
 
 function serializeUser(user: {
   id: string;
-  email: string;
+  username: string;
+  email: string | null;
   name: string | null;
   timezone: string;
   defaultReminderTime: string;
   quietHoursStart: string | null;
   quietHoursEnd: string | null;
+  emailVerifiedAt: Date | null;
 }) {
   return {
     id: user.id,
+    username: user.username,
     email: user.email,
     name: user.name,
     timezone: user.timezone,
     defaultReminderTime: user.defaultReminderTime,
     quietHoursStart: user.quietHoursStart,
     quietHoursEnd: user.quietHoursEnd,
+    emailVerifiedAt: user.emailVerifiedAt?.toISOString() || null,
   };
 }
 

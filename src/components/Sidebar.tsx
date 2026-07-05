@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Car, LayoutDashboard, Settings, Bell, Wrench, ClipboardList, Eye, FileClock } from 'lucide-react';
 
 interface SidebarUser {
-  email: string;
+  username: string;
   name: string | null;
 }
 
@@ -14,7 +14,7 @@ interface SidebarProps {
 }
 
 function getInitials(user: SidebarUser) {
-  const source = (user.name || user.email).trim();
+  const source = (user.name || user.username).trim();
   const [first = '', second = ''] = source.split(/\s+/);
   return `${first[0] || ''}${second[0] || ''}`.toUpperCase() || source.slice(0, 2).toUpperCase();
 }
@@ -74,8 +74,8 @@ export default function Sidebar({ user }: SidebarProps) {
             {getInitials(user)}
           </div>
           <div className="overflow-hidden">
-            <p className="truncate text-sm font-semibold text-white">{user.name || user.email}</p>
-            <p className="truncate text-xs text-neutral-500">{user.email}</p>
+            <p className="truncate text-sm font-semibold text-white">{user.name || user.username}</p>
+            <p className="truncate text-xs text-neutral-500">{user.username}</p>
           </div>
         </div>
       </div>

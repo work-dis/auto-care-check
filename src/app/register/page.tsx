@@ -7,7 +7,7 @@ import Link from 'next/link';
 export default function RegisterPage() {
   const router = useRouter();
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -23,7 +23,7 @@ export default function RegisterPage() {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, username, password }),
       });
 
       const data = await res.json();
@@ -96,24 +96,25 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-neutral-400 mb-1.5">
-              Email
+            <label htmlFor="username" className="block text-sm font-medium text-neutral-400 mb-1.5">
+              Логин
             </label>
             <input
-              id="email"
-              type="email"
-              placeholder="user@example.ru"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              id="username"
+              type="text"
+              placeholder="ivan123"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               className={`w-full rounded-lg border bg-neutral-900/50 px-3.5 py-2.5 text-sm text-neutral-100 placeholder-neutral-600 outline-none transition-colors ${
-                fieldErrors.email
+                fieldErrors.username
                   ? 'border-red-500 focus:border-red-500'
                   : 'border-neutral-800 focus:border-teal-500'
               }`}
             />
-            {fieldErrors.email && (
-              <p className="text-red-400 text-xs mt-1">{fieldErrors.email}</p>
+            {fieldErrors.username && (
+              <p className="text-red-400 text-xs mt-1">{fieldErrors.username}</p>
             )}
+            <p className="text-neutral-500 text-xs mt-1">Логин (минимум 3 символа, латиница)</p>
           </div>
 
           <div>

@@ -20,12 +20,12 @@ describe('Service Record Integration Tests', () => {
 
     // 1. Create User A and User B
     const userA = await prisma.user.create({
-      data: { email: 'usera-sr@example.com', name: 'User A' },
+      data: { email: 'usera-sr@example.com', name: 'User A', username: 'sr_user_a' },
     });
     userAId = userA.id;
 
     const userB = await prisma.user.create({
-      data: { email: 'userb-sr@example.com', name: 'User B' },
+      data: { email: 'userb-sr@example.com', name: 'User B', username: 'sr_user_b' },
     });
     userBId = userB.id;
 

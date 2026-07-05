@@ -1,6 +1,5 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { isLegacyAccountEmail } from '@/lib/auth';
 import { verifyToken } from '@/lib/jwt';
 
 export default async function Home() {
@@ -11,7 +10,7 @@ export default async function Home() {
   if (token) {
     try {
       const payload = verifyToken(token);
-      hasToken = !isLegacyAccountEmail(payload.email);
+      hasToken = !!payload;
     } catch {
       hasToken = false;
     }

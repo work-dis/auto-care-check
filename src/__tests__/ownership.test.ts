@@ -9,18 +9,11 @@ describe('Ownership Authorization Tests', () => {
   beforeAll(async () => {
     // 1. Create User A and User B
     const userA = await prisma.user.create({
-      data: {
-        email: 'userA@example.com',
-        name: 'User A',
-      },
+      data: { email: 'userA@example.com', name: 'User A', username: 'userA' },
     });
     userAId = userA.id;
-
     const userB = await prisma.user.create({
-      data: {
-        email: 'userB@example.com',
-        name: 'User B',
-      },
+      data: { email: 'userB@example.com', name: 'User B', username: 'userB' },
     });
     userBId = userB.id;
 

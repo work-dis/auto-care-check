@@ -21,13 +21,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { email, password, name } = validation.data;
-    const normalizedEmail = email.toLowerCase().trim();
+    const { username, password, name } = validation.data;
+    const normalizedUsername = username.toLowerCase().trim();
 
-    const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    const existing = await prisma.user.findUnique({ where: { username: normalizedUsername } });
     if (existing) {
       return NextResponse.json(
-        { error: { code: 'EMAIL_TAKEN', message: 'Этот email уже зарегистрирован' } },
+        { error: { code: 'USERNAME_TAKEN', message: 'Этот логин уже занят' } },
         { status: 409 }
       );
     }
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
 
     const user = await prisma.user.create({
       data: {
-        email: normalizedEmail,
+        username: normalizedUsername,
         name,
         passwordHash,
         timezone: 'Europe/Moscow',
@@ -45,10 +45,10 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const token = signToken({ userId: user.id, email: user.email });
+    const token = signToken({ userId: user.id, username: user.username });
 
     const response = NextResponse.json({
-      user: { id: user.id, email: user.email, name: user.name },
+      user: { id: user.id, username: user.username, name: user.name },
       token,
     });
 

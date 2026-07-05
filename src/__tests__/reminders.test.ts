@@ -18,13 +18,14 @@ describe('Reminder Rules and Notifications integration tests', () => {
 
     // 1. Create User
     const user = await prisma.user.create({
-      data: {
-        email: 'reminders-test@example.com',
-        name: 'Reminders Tester',
-        timezone: 'UTC',
-        defaultReminderTime: '09:00',
-      },
-    });
+        data: {
+          email: 'reminders-test@example.com',
+          name: 'Reminders Tester',
+          username: 'reminders_tester',
+          timezone: 'UTC',
+          defaultReminderTime: '09:00',
+        },
+      });
     userId = user.id;
 
     // 2. Create Vehicle

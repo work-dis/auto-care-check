@@ -17,11 +17,12 @@ describe('Observations Integration Tests', () => {
 
     // 1. Create User
     const user = await prisma.user.create({
-      data: {
-        email: 'observations-test@example.com',
-        name: 'Observations Tester',
-      },
-    });
+        data: {
+          email: 'observations-test@example.com',
+          name: 'Observations Tester',
+          username: 'obs_tester',
+        },
+      });
     userId = user.id;
 
     // 2. Create Vehicle

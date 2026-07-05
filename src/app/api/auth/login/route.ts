@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { verifyPassword, isLegacyAccountEmail } from '@/lib/auth';
+import { verifyPassword } from '@/lib/auth';
 import { signToken } from '@/lib/jwt';
 import { loginSchema } from '@/lib/validation';
 
@@ -21,20 +21,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { email, password } = validation.data;
-    const normalizedEmail = email.toLowerCase().trim();
+    const { username, password } = validation.data;
+    const normalizedUsername = username.toLowerCase().trim();
 
-    if (isLegacyAccountEmail(normalizedEmail)) {
-      return NextResponse.json(
-        { error: { code: 'LEGACY_ACCOUNT', message: 'Этот аккаунт больше не поддерживается. Зарегистрируйтесь заново.' } },
-        { status: 401 }
-      );
-    }
-
-    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    const user = await prisma.user.findUnique({ where: { username: normalizedUsername } });
     if (!user) {
       return NextResponse.json(
-        { error: { code: 'INVALID_CREDENTIALS', message: 'Неверный email или пароль' } },
+        { error: { code: 'INVALID_CREDENTIALS', message: 'Неверный логин или пароль' } },
         { status: 401 }
       );
     }
@@ -49,15 +42,15 @@ export async function POST(request: NextRequest) {
     const valid = await verifyPassword(password, user.passwordHash);
     if (!valid) {
       return NextResponse.json(
-        { error: { code: 'INVALID_CREDENTIALS', message: 'Неверный email или пароль' } },
+        { error: { code: 'INVALID_CREDENTIALS', message: 'Неверный логин или пароль' } },
         { status: 401 }
       );
     }
 
-    const token = signToken({ userId: user.id, email: user.email });
+    const token = signToken({ userId: user.id, username: user.username });
 
     const response = NextResponse.json({
-      user: { id: user.id, email: user.email, name: user.name },
+      user: { id: user.id, username: user.username, name: user.name },
       token,
     });
 

@@ -9,7 +9,8 @@ import Sidebar from '@/components/Sidebar';
 
 interface SessionUser {
   id: string;
-  email: string;
+  username: string;
+  email: string | null;
   name: string | null;
   timezone: string;
   defaultReminderTime: string;
@@ -20,7 +21,7 @@ interface SessionUser {
 const AUTH_ROUTES = new Set(['/login', '/register']);
 
 function getInitials(user: SessionUser) {
-  const source = (user.name || user.email).trim();
+  const source = (user.name || user.username).trim();
   const [first = '', second = ''] = source.split(/\s+/);
   return `${first[0] || ''}${second[0] || ''}`.toUpperCase() || source.slice(0, 2).toUpperCase();
 }
@@ -96,7 +97,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const displayName = user.name || user.email;
+  const displayName = user.name || user.username;
 
   return (
     <>
@@ -114,7 +115,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </div>
               <div className="min-w-0">
                 <div className="truncate text-sm font-semibold text-neutral-100">{displayName}</div>
-                <div className="truncate text-xs text-neutral-500">{user.email}</div>
+                <div className="truncate text-xs text-neutral-500">{user.username}</div>
               </div>
             </div>
             <div className="md:hidden">
