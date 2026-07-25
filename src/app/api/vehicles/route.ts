@@ -2,21 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionUserId } from '@/lib/auth';
 import { vehicleSchema } from '@/lib/validation';
+import { decryptVehicleFields, encryptSensitiveValue } from '@/lib/sensitiveData';
 
 export async function GET() {
   try {
     const userId = await getSessionUserId();
     const vehicles = await prisma.vehicle.findMany({
       where: {
-        userId,
         archivedAt: null,
+        OR: [{ userId }, { members: { some: { userId } } }],
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: [{ isPrimary: 'desc' }, { createdAt: 'desc' }],
     });
 
-    return NextResponse.json({ vehicles });
+    return NextResponse.json({ vehicles: vehicles.map(decryptVehicleFields) });
   } catch (error) {
     console.error('Error fetching vehicles:', error);
     return NextResponse.json(
@@ -50,15 +49,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { currentMileage, ...rest } = parsed.data;
+    const { currentMileage, plateNumberEncryptedOrMasked, vinEncryptedOrMasked, ...rest } = parsed.data;
 
     // Use transaction to create vehicle and initial odometer reading
     const vehicle = await prisma.$transaction(async (tx) => {
+      const activeVehicleCount = await tx.vehicle.count({
+        where: { userId, archivedAt: null },
+      });
       const createdVehicle = await tx.vehicle.create({
         data: {
           userId,
           ...rest,
+          plateNumberEncryptedOrMasked: encryptSensitiveValue(plateNumberEncryptedOrMasked),
+          vinEncryptedOrMasked: encryptSensitiveValue(vinEncryptedOrMasked),
           currentMileage,
+          isPrimary: activeVehicleCount === 0,
         },
       });
 
@@ -77,7 +82,7 @@ export async function POST(request: NextRequest) {
       return createdVehicle;
     });
 
-    return NextResponse.json({ vehicle }, { status: 201 });
+    return NextResponse.json({ vehicle: decryptVehicleFields(vehicle) }, { status: 201 });
   } catch (error) {
     console.error('Error creating vehicle:', error);
     return NextResponse.json(

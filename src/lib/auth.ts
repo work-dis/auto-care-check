@@ -30,6 +30,13 @@ export async function getSessionUserId(): Promise<string> {
     const tokenCookie = cookieStore.get('auth_token')?.value;
     if (tokenCookie) {
       const payload = verifyToken(tokenCookie);
+      const user = await prisma.user.findUnique({
+        where: { id: payload.userId },
+        select: { sessionVersion: true },
+      });
+      if (!user || user.sessionVersion !== payload.sessionVersion) {
+        throw new UnauthorizedError();
+      }
       return payload.userId;
     }
   } catch {

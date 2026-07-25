@@ -3,10 +3,24 @@ import { prisma } from '@/lib/prisma';
 import { hashPassword } from '@/lib/auth';
 import { signToken } from '@/lib/jwt';
 import { registerSchema } from '@/lib/validation';
+import { consumeRateLimit, getRequestIdentity } from '@/server/shared/rateLimit';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const identity = getRequestIdentity(request);
+    const usernameKey =
+      typeof body.username === 'string' ? body.username.toLowerCase().trim() : 'invalid';
+    const rateLimit = await consumeRateLimit(`register:${identity}:${usernameKey}`, {
+      limit: 5,
+      windowMs: 60 * 60 * 1000,
+    });
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: { code: 'RATE_LIMITED', message: 'Слишком много попыток регистрации' } },
+        { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfterSeconds) } },
+      );
+    }
     const validation = registerSchema.safeParse(body);
 
     if (!validation.success) {
@@ -21,7 +35,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { username, password, name } = validation.data;
+    const { username, password, name, timezone } = validation.data;
     const normalizedUsername = username.toLowerCase().trim();
 
     const existing = await prisma.user.findUnique({ where: { username: normalizedUsername } });
@@ -39,17 +53,20 @@ export async function POST(request: NextRequest) {
         username: normalizedUsername,
         name,
         passwordHash,
-        timezone: 'Europe/Moscow',
+        timezone,
         locale: 'ru',
         defaultReminderTime: '09:00',
       },
     });
 
-    const token = signToken({ userId: user.id, username: user.username });
+    const token = signToken({
+      userId: user.id,
+      username: user.username,
+      sessionVersion: user.sessionVersion,
+    });
 
     const response = NextResponse.json({
       user: { id: user.id, username: user.username, name: user.name },
-      token,
     });
 
     response.cookies.set('auth_token', token, {

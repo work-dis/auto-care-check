@@ -1,5 +1,8 @@
 # 10. Тестовые сценарии
 
+> Статус: исходный acceptance-набор. Актуальная автоматизация описана в
+> [`../docs/testing/strategy.md`](../docs/testing/strategy.md).
+
 ## A. Ручной smoke test
 
 ### 1. Первый запуск

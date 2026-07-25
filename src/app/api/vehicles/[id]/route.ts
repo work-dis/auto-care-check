@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionUserId } from '@/lib/auth';
 import { vehicleSchema } from '@/lib/validation';
+import { hasVehicleAccess } from '@/server/vehicles/access';
+import { decryptVehicleFields, encryptSensitiveValue } from '@/lib/sensitiveData';
 
 export async function GET(
   request: NextRequest,
@@ -27,7 +29,7 @@ export async function GET(
       );
     }
 
-    if (vehicle.userId !== userId) {
+    if (!(await hasVehicleAccess(vehicle.id, vehicle.userId, userId))) {
       return NextResponse.json(
         {
           error: {
@@ -39,7 +41,7 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ vehicle });
+    return NextResponse.json({ vehicle: decryptVehicleFields(vehicle) });
   } catch (error) {
     console.error('Error fetching vehicle:', error);
     return NextResponse.json(
@@ -80,7 +82,7 @@ export async function PATCH(
       );
     }
 
-    if (vehicle.userId !== userId) {
+    if (!(await hasVehicleAccess(vehicle.id, vehicle.userId, userId, 'editor'))) {
       return NextResponse.json(
         {
           error: {
@@ -111,13 +113,21 @@ export async function PATCH(
     const updateData = { ...parsed.data };
     delete updateData.currentMileage;
     delete updateData.mileageUnit;
+    if (updateData.plateNumberEncryptedOrMasked !== undefined) {
+      updateData.plateNumberEncryptedOrMasked = encryptSensitiveValue(
+        updateData.plateNumberEncryptedOrMasked,
+      );
+    }
+    if (updateData.vinEncryptedOrMasked !== undefined) {
+      updateData.vinEncryptedOrMasked = encryptSensitiveValue(updateData.vinEncryptedOrMasked);
+    }
 
     const updatedVehicle = await prisma.vehicle.update({
       where: { id },
       data: updateData,
     });
 
-    return NextResponse.json({ vehicle: updatedVehicle });
+    return NextResponse.json({ vehicle: decryptVehicleFields(updatedVehicle) });
   } catch (error) {
     console.error('Error updating vehicle:', error);
     return NextResponse.json(
@@ -157,7 +167,7 @@ export async function DELETE(
       );
     }
 
-    if (vehicle.userId !== userId) {
+    if (!(await hasVehicleAccess(vehicle.id, vehicle.userId, userId, 'owner'))) {
       return NextResponse.json(
         {
           error: {
@@ -170,11 +180,28 @@ export async function DELETE(
     }
 
     // 2. Soft delete / Archive
-    const archivedVehicle = await prisma.vehicle.update({
-      where: { id },
-      data: {
-        archivedAt: new Date(),
-      },
+    const archivedVehicle = await prisma.$transaction(async (tx) => {
+      const archived = await tx.vehicle.update({
+        where: { id },
+        data: {
+          archivedAt: new Date(),
+          isPrimary: false,
+        },
+      });
+      if (vehicle.isPrimary) {
+        const replacement = await tx.vehicle.findFirst({
+          where: { userId, archivedAt: null, id: { not: id } },
+          orderBy: { createdAt: 'desc' },
+          select: { id: true },
+        });
+        if (replacement) {
+          await tx.vehicle.update({
+            where: { id: replacement.id },
+            data: { isPrimary: true },
+          });
+        }
+      }
+      return archived;
     });
 
     return NextResponse.json({

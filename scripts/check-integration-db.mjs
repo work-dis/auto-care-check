@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 
 function loadDotEnv() {
   const envPath = path.resolve(process.cwd(), '.env');
@@ -60,6 +61,18 @@ socket.once('connect', () => {
 });
 
 socket.once('end', () => {
+  const psqlUrl = new URL(databaseUrl);
+  psqlUrl.search = '';
+  const check = spawnSync(
+    'psql',
+    [psqlUrl.toString(), '--no-psqlrc', '--tuples-only', '--no-align', '--command', 'SELECT 1'],
+    { encoding: 'utf8' },
+  );
+  if (check.status !== 0) {
+    console.error('PostgreSQL is reachable, but DATABASE_URL cannot open the selected database.');
+    console.error('Run `npm run test:prepare` and use the generated local test database URL.');
+    process.exit(1);
+  }
   process.exit(0);
 });
 

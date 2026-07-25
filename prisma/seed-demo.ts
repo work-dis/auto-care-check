@@ -83,11 +83,6 @@ async function main() {
     console.log(`Categories already exist: ${catCount}`);
   }
 
-  // Get oil category
-  const oilCat = await prisma.maintenanceCategory.findFirst({
-    where: { isSystem: true, name: 'Двигатель и масла' },
-  });
-
   const engineCat = await prisma.maintenanceCategory.findFirst({
     where: { isSystem: true, name: 'Двигатель и масла' },
   });

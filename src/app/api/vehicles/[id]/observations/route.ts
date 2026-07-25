@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionUserId } from '@/lib/auth';
 import { observationSchema } from '@/lib/validation';
+import { hasVehicleAccess } from '@/server/vehicles/access';
 
 export async function GET(
   request: NextRequest,
@@ -16,7 +17,7 @@ export async function GET(
       where: { id: vehicleId },
     });
 
-    if (!vehicle || vehicle.userId !== userId) {
+    if (!vehicle || !(await hasVehicleAccess(vehicle.id, vehicle.userId, userId))) {
       return NextResponse.json(
         { error: { code: 'FORBIDDEN', message: 'Доступ запрещен' } },
         { status: 403 }
@@ -56,7 +57,7 @@ export async function POST(
       where: { id: vehicleId },
     });
 
-    if (!vehicle || vehicle.userId !== userId) {
+    if (!vehicle || !(await hasVehicleAccess(vehicle.id, vehicle.userId, userId, 'editor'))) {
       return NextResponse.json(
         { error: { code: 'FORBIDDEN', message: 'Доступ запрещен' } },
         { status: 403 }
@@ -80,31 +81,42 @@ export async function POST(
 
     const { title, description, priority, state, photoUrl, maintenancePlanId } = validation.data;
 
-    // 3. Create observation
-    const observation = await prisma.observation.create({
-      data: {
-        vehicleId,
-        title,
-        description,
-        priority,
-        state,
-        photoUrl,
-        maintenancePlanId,
-      },
-      include: {
-        maintenancePlan: true,
-      },
-    });
+    if (maintenancePlanId) {
+      const plan = await prisma.maintenancePlan.findUnique({
+        where: { id: maintenancePlanId },
+        select: { vehicleId: true },
+      });
+      if (!plan || plan.vehicleId !== vehicleId) {
+        return NextResponse.json(
+          { error: { code: 'INVALID_MAINTENANCE_PLAN', message: 'План не принадлежит этому автомобилю' } },
+          { status: 400 },
+        );
+      }
+    }
 
-    // Write AuditEvent
-    await prisma.auditEvent.create({
-      data: {
-        userId,
-        entityType: 'Observation',
-        entityId: observation.id,
-        action: 'CREATE',
-        afterJson: JSON.stringify(observation),
-      },
+    const observation = await prisma.$transaction(async (tx) => {
+      const created = await tx.observation.create({
+        data: {
+          vehicleId,
+          title,
+          description,
+          priority,
+          state,
+          photoUrl,
+          maintenancePlanId,
+        },
+        include: { maintenancePlan: true },
+      });
+      await tx.auditEvent.create({
+        data: {
+          userId,
+          entityType: 'Observation',
+          entityId: created.id,
+          action: 'CREATE',
+          afterJson: JSON.stringify(created),
+        },
+      });
+      return created;
     });
 
     return NextResponse.json({ observation });

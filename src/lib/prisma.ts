@@ -5,14 +5,12 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function resolveDatabaseUrl(): string {
-  // Vercel + Supabase auto-provisions POSTGRES_PRISMA_URL
-  if (process.env.POSTGRES_PRISMA_URL) return process.env.POSTGRES_PRISMA_URL;
-  return process.env.DATABASE_URL ?? 'postgresql://localhost:5432/autopulse';
-}
-
-function resolveDirectUrl(): string | undefined {
-  if (process.env.POSTGRES_URL_NON_POOLING) return process.env.POSTGRES_URL_NON_POOLING;
-  return process.env.DIRECT_URL ?? undefined;
+  // An explicit DATABASE_URL must win in tests, containers and custom deployments.
+  return (
+    process.env.DATABASE_URL ||
+    process.env.POSTGRES_PRISMA_URL ||
+    'postgresql://localhost:5432/autopulse'
+  );
 }
 
 function createPrismaClient(): PrismaClient {

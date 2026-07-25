@@ -1,86 +1,127 @@
 # AutoPulse — Сервис контроля обслуживания автомобиля
 
-Репозиторий содержит техническое задание (ТЗ) и инфраструктуру для разработки приложения **AutoPulse** — личного PWA-сервиса («бортового журнала») для отслеживания технического состояния и планирования ТО автомобиля.
+AutoPulse — личный PWA-бортжурнал для планирования технического обслуживания,
+учёта пробега, работ, топлива, шин, документов и расходов. Репозиторий содержит
+рабочее приложение, миграции PostgreSQL, автоматические тесты и техническую
+документацию.
 
 ## Текущий статус проекта
 
-**Итерация 6 завершена (MVP полностью реализован)**
+**Статус: MVP стабилизирован, этапы P0–P7 реализованы.**
 
 | Итерация | Описание | Статус |
 | --- | --- | --- |
-| Итерация 1 | Фундамент: Next.js, TypeScript, Prisma, PostgreSQL, Docker, seed, demo-auth | ✅ Готово |
+| Итерация 1 | Фундамент: Next.js, TypeScript, Prisma, PostgreSQL, Docker, seed и авторизация | ✅ Готово |
 | Итерация 2 | Vehicle, Odometer, MaintenancePlan, Zod-валидация, ownership checks | ✅ Готово |
 | Итерация 3 | Status Engine, Dashboard, Readiness Score, sidebar/bottom nav, responsive | ✅ Готово |
 | Итерация 4 | ServiceRecord, ServicePart, void с причиной, транзакции, тесты | ✅ Готово |
 | Итерация 5 | ReminderRule, Notification Center, worker/cron, дедупликация | ✅ Готово |
 | Итерация 6 | Observations UI/API, PWA иконки, polish, reduced-motion, production build | ✅ Готово |
+| Итерация 7 | Валюты, эксплуатация, аналитика, OCR, экспорт, совместный доступ и hardening | ✅ Готово |
 
-**Целевое состояние стабилизации:**
+Последняя локальная проверка:
+
 - ✅ `npm run lint`
 - ✅ `npm run typecheck`
 - ✅ `npm run build`
-- ✅ `npm test` (unit + integration, при запущенном PostgreSQL)
+- ✅ 40 unit- и 20 integration-тестов
+- ✅ 8 E2E-сценариев: Desktop Chrome и мобильный профиль Pixel 5
+- ✅ `npm audit`: 0 известных уязвимостей
 
 ## Навигация по ТЗ
 
 | Файл | Содержание |
 | --- | --- |
-| [00_README.md](file:///Users/miko/Documents/auto-care-check/autopulse_car_service_specs/00_README.md) | Общее описание проекта, ценность и рекомендуемый стек. |
-| [01_PRODUCT_VISION_AND_SCOPE.md](file:///Users/miko/Documents/auto-care-check/autopulse_car_service_specs/01_PRODUCT_VISION_AND_SCOPE.md) | Видение продукта, целевая аудитория, границы MVP. |
-| [02_FUNCTIONAL_REQUIREMENTS.md](file:///Users/miko/Documents/auto-care-check/autopulse_car_service_specs/02_FUNCTIONAL_REQUIREMENTS.md) | Функциональные требования, User Stories. |
-| [03_DATA_MODEL_AND_BUSINESS_LOGIC.md](file:///Users/miko/Documents/auto-care-check/autopulse_car_service_specs/03_DATA_MODEL_AND_BUSINESS_LOGIC.md) | Модель данных, логика расчета статусов ТО. |
-| [04_UI_UX_AUTOMOTIVE_DASHBOARD.md](file:///Users/miko/Documents/auto-care-check/autopulse_car_service_specs/04_UI_UX_AUTOMOTIVE_DASHBOARD.md) | Фронтенд-требования, стилистика приборной панели. |
-| [05_BACKEND_API_AND_NOTIFICATIONS.md](file:///Users/miko/Documents/auto-care-check/autopulse_car_service_specs/05_BACKEND_API_AND_NOTIFICATIONS.md) | API, фоновые задачи, напоминания. |
-| [06_NON_FUNCTIONAL_AND_SECURITY.md](file:///Users/miko/Documents/auto-care-check/autopulse_car_service_specs/06_NON_FUNCTIONAL_AND_SECURITY.md) | Безопасность, производительность, надежность. |
-| [07_ROADMAP_AND_ACCEPTANCE.md](file:///Users/miko/Documents/auto-care-check/autopulse_car_service_specs/07_ROADMAP_AND_ACCEPTANCE.md) | Дорожная карта и критерии приемки. |
-| [09_ITERATION_PROMPTS.md](file:///Users/miko/Documents/auto-care-check/autopulse_car_service_specs/09_ITERATION_PROMPTS.md) | Поэтапные промпты для ИИ-разработки. |
+| [00_README.md](autopulse_car_service_specs/00_README.md) | Общее описание пакета требований. |
+| [01_PRODUCT_VISION_AND_SCOPE.md](autopulse_car_service_specs/01_PRODUCT_VISION_AND_SCOPE.md) | Видение продукта, аудитория и исходные границы MVP. |
+| [02_FUNCTIONAL_REQUIREMENTS.md](autopulse_car_service_specs/02_FUNCTIONAL_REQUIREMENTS.md) | Исходные функциональные требования. |
+| [03_DATA_MODEL_AND_BUSINESS_LOGIC.md](autopulse_car_service_specs/03_DATA_MODEL_AND_BUSINESS_LOGIC.md) | Доменная модель и формулы статусов ТО. |
+| [04_UI_UX_AUTOMOTIVE_DASHBOARD.md](autopulse_car_service_specs/04_UI_UX_AUTOMOTIVE_DASHBOARD.md) | UX/UI-концепция автомобильной панели. |
+| [05_BACKEND_API_AND_NOTIFICATIONS.md](autopulse_car_service_specs/05_BACKEND_API_AND_NOTIFICATIONS.md) | Исходный проект API и уведомлений. |
+| [06_NON_FUNCTIONAL_AND_SECURITY.md](autopulse_car_service_specs/06_NON_FUNCTIONAL_AND_SECURITY.md) | Нефункциональные требования и безопасность. |
+| [07_ROADMAP_AND_ACCEPTANCE.md](autopulse_car_service_specs/07_ROADMAP_AND_ACCEPTANCE.md) | Исходная дорожная карта и критерии приёмки. |
+| [08_MASTER_PROMPT_FOR_AI.md](autopulse_car_service_specs/08_MASTER_PROMPT_FOR_AI.md) | Архивный мастер-промпт для первоначальной реализации. |
+| [09_ITERATION_PROMPTS.md](autopulse_car_service_specs/09_ITERATION_PROMPTS.md) | Архивные промпты по итерациям. |
+| [10_TEST_SCENARIOS.md](autopulse_car_service_specs/10_TEST_SCENARIOS.md) | Исходные ручные и автоматические сценарии. |
+
+## Актуальная техническая документация
+
+Фактическая архитектура, план стабилизации, декомпозиция модулей, безопасность,
+тестирование и эксплуатация описаны в
+[`docs/README.md`](docs/README.md).
+
+Исторические файлы в `autopulse_car_service_specs/` сохраняются как продуктовая
+спецификация, но не должны использоваться как подтверждение текущего состояния
+реализации без сверки с кодом и актуальной документацией.
 
 ## Быстрый запуск (Quick Start)
 
 ### Требования
-- Node.js v20+
-- Docker & Docker Compose
+
+- Node.js 20 LTS или новее;
+- Docker с Compose v2;
+- PostgreSQL client (`psql` и `createdb`) для подготовки integration-БД.
 
 ### Шаги для локального запуска
 
 1. **Установка зависимостей:**
+
    ```bash
-   npm install
+   npm ci
    ```
 
-2. **Запуск базы данных в Docker:**
+2. **Создание локальной конфигурации:**
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Значения по умолчанию рассчитаны на локальный PostgreSQL из
+   `docker-compose.yml`. Секреты из шаблона нельзя использовать в production.
+
+3. **Запуск базы данных в Docker:**
+
    ```bash
    docker compose up -d postgres
    ```
 
-3. **Применение миграций:**
+4. **Применение миграций:**
+
    ```bash
    npx prisma migrate deploy
    ```
 
-4. **Очистка legacy seed-данных:**
+5. **Опционально — создание локального demo-пользователя:**
+
    ```bash
    npx prisma db seed
    ```
-   Seed больше не создает demo или тестовый аккаунт. Скрипт только удаляет старые legacy seeded-учётки, если они остались в локальной базе.
 
-5. **Запуск Next.js в режиме разработки:**
+   Команда создаёт только локального пользователя `demo / demo123`, если его ещё
+   нет. Системные категории ТО устанавливаются миграцией и от seed не зависят.
+   В production demo-seed запускать не следует.
+
+6. **Запуск Next.js в режиме разработки:**
+
    ```bash
    npm run dev
    ```
-   Приложение будет доступно на [http://localhost:3000](http://localhost:3000). Зарегистрируйте новый аккаунт через `/register`.
 
-6. **Запуск проверок:**
+   Приложение будет доступно на
+   [http://localhost:3000](http://localhost:3000). Новый аккаунт можно создать
+   на странице `/register`.
+
+7. **Запуск проверок:**
+
    ```bash
-   npm run lint
-   npm run typecheck
-   npm test
+   npm run test:prepare
+   npm run verify
    ```
 
 ### Запуск всего стека в Docker (Production Build)
 
 ```bash
-docker-compose up -d --build
+docker compose up -d --build
 ```
 
 ---
@@ -100,13 +141,24 @@ docker-compose up -d --build
 
 ## Известные ограничения MVP
 
-- **Авторизация:** Реализован вход и регистрация по `email + password` через JWT-cookie. Вход через Telegram вынесен в следующий этап.
-- **Email/Push уведомления:** Worker создает уведомления в БД, реальная отправка email/push не реализована — только `in_app`.
-- **Загрузка файлов:** Фото чека/симптома принимается как URL-строка (без загрузки файлов на сервер).
-- **Шифрование VIN/госномера:** Хранятся в открытом виде (поле названо `...EncryptedOrMasked` как placeholder).
-- **Мультивалютность:** Интерфейс поддерживает поле `currency`, но все суммы выводятся без конвертации.
-- **Offline режим PWA:** Manifest настроен, service worker не подключен (требует отдельной конфигурации next-pwa).
+- **Авторизация:** Реализованы username/password и Telegram Login Widget через HttpOnly JWT-cookie.
+- **Email/Push уведомления:** Поддерживаются `in_app`, email и Web Push при наличии конфигурации провайдера.
+- **Загрузка файлов:** Изображения загружаются в Cloudinary с ограничением размера и формата.
+- **Шифрование VIN/госномера:** Новые и изменённые значения шифруются AES-256-GCM. Для старых данных выполните `npm run encrypt-sensitive-data`.
+- **Мультивалютность:** Поддерживаются USD, BYN, RUB и EUR. Суммы считаются отдельно и не конвертируются.
+- **Offline режим PWA:** Service worker кэширует только статические ресурсы; полноценная offline-работа с данными не поддерживается.
 - **Telegram уведомления:** Поле `channel` поддерживает `telegram`, но интеграция с ботом не реализована.
+- **OCR чеков:** Доступен при наличии `OCR_SPACE_API_KEY`; распознанные значения всегда требуют проверки пользователем.
+- **JSON import:** Создаёт новый автомобиль и восстанавливает карточку,
+  документы, шины и заправки. Планы ТО, сервисные записи и наблюдения из полного
+  JSON export пока не импортируются.
+
+## Эксплуатация и аналитика
+
+- `/ownership` — заправки, документы, комплекты шин, OCR чеков, роли viewer/editor, экспорт и импорт;
+- `/analytics` — расходы по валютам, месяцам и категориям, стоимость километра, годовой прогноз и бюджеты;
+- PDF, CSV и JSON экспорт доступны из раздела «Эксплуатация»;
+- документы со сроком действия автоматически попадают в notification engine за 30 и 7 дней и после истечения.
 
 ## Проверки и тесты
 
@@ -114,11 +166,14 @@ docker-compose up -d --build
 - `npm run typecheck` — строгая TypeScript-проверка.
 - `npm run test:unit` — быстрые unit-тесты доменной логики.
 - `npm run test:integration` — интеграционные тесты с PostgreSQL. Перед запуском нужен `docker compose up -d postgres`.
+- `npm run test:prepare` — создаёт и мигрирует локальную изолированную `autopulse_test`.
+- `npm run test:e2e` — браузерные smoke/E2E сценарии Playwright.
 - `npm test` — полный прогон unit + integration.
 
-## Production: Vercel + Supabase
+## Production: Vercel + PostgreSQL
 
-- Приложение рассчитано на деплой в `Vercel`, а PostgreSQL — в `Supabase`.
+- Приложение рассчитано на Vercel и совместимую PostgreSQL, включая Neon и
+  Supabase.
 - Для Prisma используются две строки подключения:
   - `DATABASE_URL` — runtime URL. Для Vercel/Supabase используйте pooled connection string.
   - `DIRECT_URL` — direct connection string для `prisma migrate deploy`, `prisma studio` и других административных операций.
@@ -126,15 +181,24 @@ docker-compose up -d --build
   - `DATABASE_URL`
   - `DIRECT_URL`
   - `JWT_SECRET`
+  - `DATA_ENCRYPTION_KEY`
   - `CRON_SECRET`
-- Напоминания больше не зависят от постоянного Node worker в production. Вместо этого используется Vercel cron route [src/app/api/cron/notifications/route.ts](/Users/miko/Documents/auto-care-check/src/app/api/cron/notifications/route.ts:1) и расписание из [vercel.json](/Users/miko/Documents/auto-care-check/vercel.json:1).
-- Vercel cron делает `GET` на `/api/cron/notifications`; при наличии `CRON_SECRET` Vercel автоматически отправляет `Authorization: Bearer <CRON_SECRET>`.
+- В production напоминания обрабатывает
+  [Vercel Cron route](src/app/api/cron/notifications/route.ts) по расписанию из
+  [vercel.json](vercel.json).
+- Vercel cron делает `GET` на `/api/cron/notifications`; при наличии
+  `CRON_SECRET` Vercel автоматически отправляет
+  `Authorization: Bearer <CRON_SECRET>` — см.
+  [официальную документацию Vercel](https://vercel.com/docs/cron-jobs/manage-cron-jobs).
 - Локальный `src/worker/cron.ts` остаётся удобным dev-режимом, если нужно погонять напоминания вне Vercel.
 
 ---
 
 ## Для ИИ-агентов
 
-Папка [`.agents/`](file:///Users/miko/Documents/auto-care-check/.agents/) содержит:
-- [`AGENTS.md`](file:///Users/miko/Documents/auto-care-check/.agents/AGENTS.md) — свод правил разработки, формулы бизнес-логики и контекст для ИИ.
-- [`implementation_plan.md`](file:///Users/miko/Documents/auto-care-check/.agents/implementation_plan.md) — план итераций и архитектурных решений.
+Папка [`.agents/`](.agents/) содержит:
+
+- [`AGENTS.md`](.agents/AGENTS.md) — актуальные правила разработки и контекст
+  для ИИ-агентов;
+- [`implementation_plan.md`](.agents/implementation_plan.md) — краткая карта
+  этапов и ссылка на официальный план.

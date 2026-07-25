@@ -7,13 +7,18 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
+    "docs:lint": "markdownlint-cli2 README.md 'docs/**/*.md' 'autopulse_car_service_specs/*.md' '.agents/*.md'",
     "typecheck": "tsc --noEmit",
     "test": "npm run test:unit && npm run test:integration",
-    "test:unit": "vitest run src/__tests__/status-engine.test.ts src/__tests__/validation.test.ts",
-    "test:integration": "node scripts/check-integration-db.mjs && vitest run src/__tests__/observations.test.ts src/__tests__/odometer-logic.test.ts src/__tests__/ownership.test.ts src/__tests__/reminders.test.ts src/__tests__/service-record.test.ts",
+    "test:unit": "vitest run src/__tests__/status-engine.test.ts src/__tests__/validation.test.ts src/__tests__/telegram-login-widget.test.ts src/__tests__/odometer-rules.test.ts src/__tests__/proxy.test.ts src/__tests__/vehicle-workspace-client.test.ts src/__tests__/money-and-scheduling.test.ts",
+    "test:integration": "node scripts/run-integration-tests.mjs",
+    "test:e2e": "playwright test",
+    "test:prepare": "node scripts/prepare-test-db.mjs",
+    "verify": "npm run lint && npm run typecheck && npm run test:unit && npm run test:integration && npm run build",
     "worker": "npx tsx src/worker/cron.ts",
     "worker:dev": "npx tsx watch src/worker/cron.ts",
-    "generate-vapid": "node scripts/generate-vapid-keys.js"
+    "generate-vapid": "node scripts/generate-vapid-keys.js",
+    "encrypt-sensitive-data": "npx tsx scripts/encrypt-sensitive-data.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
@@ -23,24 +28,29 @@
     "cloudinary": "^2.10.0",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^1.23.0",
-    "next": "16.2.10",
+    "next": "^16.2.11",
     "nodemailer": "^9.0.3",
+    "pdfmake": "^0.2.20",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "web-push": "^3.6.7",
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.19.43",
     "@types/nodemailer": "^8.0.1",
+    "@types/pdfmake": "^0.2.12",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/web-push": "^3.6.4",
+    "dotenv": "^16.6.1",
     "eslint": "^9",
-    "eslint-config-next": "16.2.10",
+    "eslint-config-next": "^16.2.11",
+    "markdownlint-cli2": "^0.23.1",
     "prisma": "^6.19.3",
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
@@ -48,7 +58,11 @@
     "typescript": "^5",
     "vitest": "^4.1.9"
   },
-  "prisma": {
-    "seed": "npx tsx prisma/seed.ts"
+  "overrides": {
+    "brace-expansion": "5.0.8",
+    "js-yaml": "5.2.2",
+    "minimatch": "10.2.4",
+    "postcss": "8.5.23",
+    "sharp": "0.35.0"
   }
 }

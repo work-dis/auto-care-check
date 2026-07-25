@@ -16,6 +16,19 @@ services:
       timeout: 5s
       retries: 5
 
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/autopulse?schema=public
+      - DIRECT_URL=postgresql://postgres:postgres@postgres:5432/autopulse?schema=public
+    command: ["npx", "prisma", "migrate", "deploy"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   web:
     build:
       context: .
@@ -26,26 +39,32 @@ services:
       - "3000:3000"
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/autopulse?schema=public
+      - DIRECT_URL=postgresql://postgres:postgres@postgres:5432/autopulse?schema=public
       - PORT=3000
       - NODE_ENV=production
       - JWT_SECRET=autopulse-docker-secret-change-me
+      - DATA_ENCRYPTION_KEY=autopulse-docker-data-key-change-me
+      - CRON_SECRET=autopulse-docker-cron-secret-change-me
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
   worker:
     build:
       context: .
       dockerfile: Dockerfile
-      target: deps
+      target: worker
     container_name: autopulse-worker
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/autopulse?schema=public
+      - DIRECT_URL=postgresql://postgres:postgres@postgres:5432/autopulse?schema=public
       - NODE_ENV=production
-    command: ["npx", "tsx", "src/worker/cron.ts"]
+      - JWT_SECRET=autopulse-docker-secret-change-me
+      - DATA_ENCRYPTION_KEY=autopulse-docker-data-key-change-me
+      - CRON_SECRET=autopulse-docker-cron-secret-change-me
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
 volumes:

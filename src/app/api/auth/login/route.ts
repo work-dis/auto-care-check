@@ -3,10 +3,24 @@ import { prisma } from '@/lib/prisma';
 import { verifyPassword } from '@/lib/auth';
 import { signToken } from '@/lib/jwt';
 import { loginSchema } from '@/lib/validation';
+import { consumeRateLimit, getRequestIdentity } from '@/server/shared/rateLimit';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const identity = getRequestIdentity(request);
+    const usernameKey =
+      typeof body.username === 'string' ? body.username.toLowerCase().trim() : 'invalid';
+    const rateLimit = await consumeRateLimit(`login:${identity}:${usernameKey}`, {
+      limit: 10,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: { code: 'RATE_LIMITED', message: 'Слишком много попыток входа' } },
+        { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfterSeconds) } },
+      );
+    }
     const validation = loginSchema.safeParse(body);
 
     if (!validation.success) {
@@ -47,11 +61,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const token = signToken({ userId: user.id, username: user.username });
+    const token = signToken({
+      userId: user.id,
+      username: user.username,
+      sessionVersion: user.sessionVersion,
+    });
 
     const response = NextResponse.json({
       user: { id: user.id, username: user.username, name: user.name },
-      token,
     });
 
     response.cookies.set('auth_token', token, {

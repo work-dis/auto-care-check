@@ -98,7 +98,7 @@ self.addEventListener('push', (event) => {
     data: data.data || {},
     vibrate: [200, 100, 200],
     tag: data.data?.notificationId || 'autopulse-notification',
-    requireInteraction: data.data?.requireInteraction || true,
+    requireInteraction: data.data?.requireInteraction ?? false,
   };
 
   event.waitUntil(

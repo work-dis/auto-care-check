@@ -12,8 +12,6 @@ function getTransport() {
   const port = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587;
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
-  const fromName = process.env.SMTP_FROM_NAME || 'AutoPulse';
-
   if (!host || !user || !pass) {
     return null;
   }
@@ -45,6 +43,14 @@ export function buildReminderHtml(params: {
   planName: string;
   severity: string;
 }): string {
+  const escapeHtml = (value: string) =>
+    value.replace(/[&<>"']/g, (character) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    })[character] || character);
   const severityColor =
     params.severity === 'critical' ? '#ef4444' :
     params.severity === 'warning' ? '#f59e0b' : '#14b8a6';
@@ -72,20 +78,20 @@ export function buildReminderHtml(params: {
               <div style="display:inline-block;padding:4px 12px;border-radius:9999px;font-size:12px;font-weight:600;color:#ffffff;background-color:${severityColor};margin-bottom:16px;">
                 ${params.severity === 'critical' ? '🔴 Срочно' : params.severity === 'warning' ? '🟡 Внимание' : '🔵 Напоминание'}
               </div>
-              <h2 style="margin:0 0 8px;font-size:20px;font-weight:700;color:#ffffff;">${params.title}</h2>
-              <p style="margin:0 0 16px;font-size:15px;color:#d4d4d4;line-height:1.5;">${params.body}</p>
+              <h2 style="margin:0 0 8px;font-size:20px;font-weight:700;color:#ffffff;">${escapeHtml(params.title)}</h2>
+              <p style="margin:0 0 16px;font-size:15px;color:#d4d4d4;line-height:1.5;">${escapeHtml(params.body)}</p>
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#1a1a1e;border-radius:8px;padding:12px 16px;margin-bottom:16px;">
                 <tr>
                   <td style="font-size:12px;color:#a3a3a3;padding-bottom:4px;">Автомобиль</td>
                 </tr>
                 <tr>
-                  <td style="font-size:15px;font-weight:600;color:#ffffff;">${params.vehicleName}</td>
+                  <td style="font-size:15px;font-weight:600;color:#ffffff;">${escapeHtml(params.vehicleName)}</td>
                 </tr>
                 <tr>
                   <td style="font-size:12px;color:#a3a3a3;padding:8px 0 4px;">План ТО</td>
                 </tr>
                 <tr>
-                  <td style="font-size:15px;font-weight:600;color:#ffffff;">${params.planName}</td>
+                  <td style="font-size:15px;font-weight:600;color:#ffffff;">${escapeHtml(params.planName)}</td>
                 </tr>
               </table>
               <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard"

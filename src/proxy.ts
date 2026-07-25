@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/jwt';
 
 const PUBLIC_PAGE_ROUTES = new Set(['/login', '/register']);
-const PUBLIC_API_PREFIXES = ['/api/auth/login', '/api/auth/register', '/api/auth/telegram'];
+const PUBLIC_API_PREFIXES = ['/api/auth/login', '/api/auth/register', '/api/auth/telegram', '/api/health'];
+const CRON_ROUTE = '/api/cron/notifications';
 
 function isPublicApiRoute(pathname: string) {
-  return PUBLIC_API_PREFIXES.some((route) => pathname.startsWith(route));
+  return PUBLIC_API_PREFIXES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`),
+  );
 }
 
 function isStaticAsset(pathname: string) {
@@ -52,6 +55,13 @@ export function proxy(request: NextRequest) {
   }
 
   if (pathname.startsWith('/api/')) {
+    if (
+      pathname === CRON_ROUTE &&
+      process.env.CRON_SECRET &&
+      request.headers.get('authorization') === `Bearer ${process.env.CRON_SECRET}`
+    ) {
+      return NextResponse.next();
+    }
     if (isPublicApiRoute(pathname) || hasSession) {
       return NextResponse.next();
     }

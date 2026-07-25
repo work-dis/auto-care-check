@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionUserId } from '@/lib/auth';
 import { reminderRuleSchema } from '@/lib/validation';
+import { hasVehicleAccess } from '@/server/vehicles/access';
 
 export async function PATCH(
   request: NextRequest,
@@ -25,7 +26,7 @@ export async function PATCH(
       );
     }
 
-    if (rule.vehicle?.userId !== userId) {
+    if (!rule.vehicle || !(await hasVehicleAccess(rule.vehicle.id, rule.vehicle.userId, userId, 'editor'))) {
       return NextResponse.json(
         { error: { code: 'FORBIDDEN', message: 'Доступ запрещен' } },
         { status: 403 }
@@ -96,7 +97,7 @@ export async function DELETE(
       );
     }
 
-    if (rule.vehicle?.userId !== userId) {
+    if (!rule.vehicle || !(await hasVehicleAccess(rule.vehicle.id, rule.vehicle.userId, userId, 'editor'))) {
       return NextResponse.json(
         { error: { code: 'FORBIDDEN', message: 'Доступ запрещен' } },
         { status: 403 }

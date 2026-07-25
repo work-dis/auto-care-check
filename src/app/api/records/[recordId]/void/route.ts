@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionUserId } from '@/lib/auth';
+import { hasVehicleAccess } from '@/server/vehicles/access';
 
 export async function POST(
   request: NextRequest,
@@ -35,7 +36,7 @@ export async function POST(
       );
     }
 
-    if (serviceRecord.vehicle.userId !== userId) {
+    if (!(await hasVehicleAccess(serviceRecord.vehicleId, serviceRecord.vehicle.userId, userId, 'editor'))) {
       return NextResponse.json(
         { error: { code: 'FORBIDDEN', message: 'Доступ запрещен' } },
         { status: 403 }

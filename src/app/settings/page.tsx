@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { AlertTriangle, LogOut, Settings, ShieldAlert, Trash2, Save } from 'lucide-react';
+import { AlertTriangle, KeyRound, LogOut, Settings, ShieldAlert, Trash2, Save } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
 import PushNotificationButton from '@/components/PushNotificationButton';
 
@@ -10,6 +10,7 @@ export default function SettingsPage() {
   const [formData, setFormData] = useState({
     username: '',
     name: '',
+    email: '',
     timezone: 'UTC',
     defaultReminderTime: '09:00',
     quietHoursStart: '',
@@ -22,6 +23,9 @@ export default function SettingsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteConfirmValue, setDeleteConfirmValue] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwords, setPasswords] = useState({ currentPassword: '', newPassword: '' });
 
   useEffect(() => {
     async function loadPreferences() {
@@ -33,6 +37,7 @@ export default function SettingsPage() {
             setFormData({
               username: data.user.username || '',
               name: data.user.name || '',
+              email: data.user.email || '',
               timezone: data.user.timezone || 'UTC',
               defaultReminderTime: data.user.defaultReminderTime || '09:00',
               quietHoursStart: data.user.quietHoursStart || '',
@@ -84,9 +89,50 @@ export default function SettingsPage() {
   };
 
   const handleLogout = async () => {
-    setIsLoggingOut(true);
-    document.cookie = 'auth_token=; path=/; max-age=0';
-    window.location.assign('/login');
+    try {
+      setIsLoggingOut(true);
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } finally {
+      window.location.assign('/login');
+    }
+  };
+
+  const handleProfileSave = async () => {
+    setIsSavingProfile(true);
+    try {
+      const response = await fetch('/api/me/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: formData.name, email: formData.email || null }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error?.message || 'Не удалось обновить профиль');
+      showToast('Профиль обновлён', 'success');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Ошибка обновления профиля', 'error');
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const handlePasswordChange = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setIsChangingPassword(true);
+    try {
+      const response = await fetch('/api/me/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'password', ...passwords }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error?.message || 'Не удалось сменить пароль');
+      setPasswords({ currentPassword: '', newPassword: '' });
+      showToast('Пароль изменён, прежние сеансы завершены', 'success');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Ошибка смены пароля', 'error');
+    } finally {
+      setIsChangingPassword(false);
+    }
   };
 
   const handleDeleteAccount = async () => {
@@ -143,6 +189,7 @@ export default function SettingsPage() {
   const timezones = [
     { value: 'UTC', label: 'UTC (Всемирное время)' },
     { value: 'Europe/Moscow', label: 'Москва (MSK, UTC+3)' },
+    { value: 'Europe/Minsk', label: 'Минск (UTC+3)' },
     { value: 'Europe/Kaliningrad', label: 'Калининград (UTC+2)' },
     { value: 'Europe/Samara', label: 'Самара (SAMT, UTC+4)' },
     { value: 'Asia/Yekaterinburg', label: 'Екатеринбург (YEKT, UTC+5)' },
@@ -192,8 +239,8 @@ export default function SettingsPage() {
               <input
                 type="text"
                 value={formData.name}
-                readOnly
-                className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3.5 py-2 text-sm text-neutral-400 focus:outline-none"
+                onChange={(event) => setFormData((current) => ({ ...current, name: event.target.value }))}
+                className="min-h-11 w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3.5 py-2 text-sm text-white focus:border-teal-500 focus:outline-none"
               />
             </div>
 
@@ -209,6 +256,27 @@ export default function SettingsPage() {
               />
             </div>
           </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">
+              Email
+            </label>
+            <input
+              type="email"
+              value={formData.email}
+              onChange={(event) => setFormData((current) => ({ ...current, email: event.target.value }))}
+              placeholder="name@example.com"
+              className="min-h-11 w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3.5 py-2 text-sm text-white focus:border-teal-500 focus:outline-none"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => void handleProfileSave()}
+            disabled={isSavingProfile}
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-neutral-700 px-4 text-sm font-semibold text-neutral-200 hover:border-teal-500/40 hover:text-teal-300 disabled:opacity-50"
+          >
+            <Save className="h-4 w-4" />
+            {isSavingProfile ? 'Сохраняем…' : 'Сохранить профиль'}
+          </button>
         </div>
 
         {/* Panel Container */}
@@ -311,6 +379,44 @@ export default function SettingsPage() {
             {isSaving ? 'Сохранение...' : 'Сохранить настройки'}
           </button>
         </div>
+      </form>
+
+      <form onSubmit={handlePasswordChange} className="rounded-xl border border-neutral-850 bg-[#121214] p-6 space-y-4">
+        <div>
+          <h2 className="flex items-center gap-2 text-sm font-bold text-white">
+            <KeyRound className="h-4 w-4 text-teal-400" />
+            Смена пароля
+          </h2>
+          <p className="mt-1 text-xs text-neutral-400">
+            После смены пароля все ранее выданные сеансы будут отозваны.
+          </p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold uppercase text-neutral-400">Текущий пароль</label>
+            <input
+              type="password"
+              required
+              value={passwords.currentPassword}
+              onChange={(event) => setPasswords((current) => ({ ...current, currentPassword: event.target.value }))}
+              className="min-h-11 w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3.5 text-sm text-white focus:border-teal-500 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold uppercase text-neutral-400">Новый пароль</label>
+            <input
+              type="password"
+              required
+              minLength={10}
+              value={passwords.newPassword}
+              onChange={(event) => setPasswords((current) => ({ ...current, newPassword: event.target.value }))}
+              className="min-h-11 w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3.5 text-sm text-white focus:border-teal-500 focus:outline-none"
+            />
+          </div>
+        </div>
+        <button type="submit" disabled={isChangingPassword} className="min-h-11 rounded-lg bg-teal-500 px-5 text-sm font-bold text-black hover:bg-teal-400 disabled:opacity-50">
+          {isChangingPassword ? 'Меняем…' : 'Изменить пароль'}
+        </button>
       </form>
 
       <div className="rounded-xl border border-neutral-850 bg-[#121214] p-6 space-y-4">

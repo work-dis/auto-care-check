@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v2 as cloudinary } from 'cloudinary';
+import { consumeRateLimit, getRequestIdentity } from '@/server/shared/rateLimit';
+
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/avif']);
 
 // Configure Cloudinary
 cloudinary.config({
@@ -10,6 +14,36 @@ cloudinary.config({
 
 export async function POST(request: NextRequest) {
   try {
+    const rateLimit = await consumeRateLimit(`upload:${getRequestIdentity(request)}`, {
+      limit: 30,
+      windowMs: 60 * 60 * 1000,
+    });
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: { code: 'RATE_LIMITED', message: 'Слишком много загрузок' } },
+        { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfterSeconds) } },
+      );
+    }
+
+    if (
+      !process.env.CLOUDINARY_CLOUD_NAME ||
+      !process.env.CLOUDINARY_API_KEY ||
+      !process.env.CLOUDINARY_API_SECRET
+    ) {
+      return NextResponse.json(
+        { error: { code: 'UPLOAD_NOT_CONFIGURED', message: 'Хранилище изображений не настроено' } },
+        { status: 503 },
+      );
+    }
+
+    const contentLength = Number(request.headers.get('content-length') || 0);
+    if (contentLength > MAX_IMAGE_BYTES + 1024 * 1024) {
+      return NextResponse.json(
+        { error: { code: 'FILE_TOO_LARGE', message: 'Максимальный размер изображения — 8 МБ' } },
+        { status: 413 },
+      );
+    }
+
     const formData = await request.formData();
     const file = formData.get('file');
 
@@ -17,6 +51,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'No file provided' },
         { status: 400 },
+      );
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      return NextResponse.json(
+        { error: { code: 'FILE_TOO_LARGE', message: 'Максимальный размер изображения — 8 МБ' } },
+        { status: 413 },
+      );
+    }
+    if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+      return NextResponse.json(
+        { error: { code: 'UNSUPPORTED_MEDIA_TYPE', message: 'Разрешены JPEG, PNG, WebP и AVIF' } },
+        { status: 415 },
       );
     }
 
@@ -32,6 +78,7 @@ export async function POST(request: NextRequest) {
             folder: 'autopulse',
             transformation: [{ quality: 'auto', fetch_format: 'auto' }],
             resource_type: 'image',
+            allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'avif'],
           },
           (error, result) => {
             if (error) {

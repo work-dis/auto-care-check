@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { Wrench } from 'lucide-react';
 
 declare global {
   interface Window {
@@ -32,11 +33,7 @@ export default function LoginForm() {
   const widgetRef = useRef<HTMLDivElement>(null);
   const callbackRegistered = useRef(false);
 
-  const [botUsername, setBotUsername] = useState('');
-
-  useEffect(() => {
-    setBotUsername(process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || '');
-  }, []);
+  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || '';
 
   async function handleUsernameLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -148,7 +145,9 @@ export default function LoginForm() {
     <div className="w-full max-w-md">
       {/* Logo / Branding */}
       <div className="text-center mb-8">
-        <div className="text-4xl mb-2">⚡</div>
+        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-teal-500 text-black">
+          <Wrench className="h-6 w-6" aria-hidden="true" />
+        </div>
         <h1 className="text-2xl font-bold text-neutral-100">AutoPulse</h1>
         <p className="text-neutral-500 text-sm mt-1">
           Цифровой бортовой журнал автомобиля

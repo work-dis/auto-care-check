@@ -1,6 +1,6 @@
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
@@ -9,37 +9,39 @@ generator client {
 }
 
 model User {
-  id                  String       @id @default(uuid())
-  username            String       @unique
-  email               String?
+  id                  String             @id @default(uuid())
+  username            String             @unique
+  email               String?            @unique
   name                String?
-  passwordHash        String    @default("")
-  telegramId          String?      @unique
+  passwordHash        String             @default("")
+  telegramId          String?            @unique
   telegramAvatarUrl   String?
   emailVerifiedAt     DateTime?
-  timezone            String       @default("UTC")
-  locale              String       @default("ru")
-  defaultReminderTime String       @default("09:00")
+  timezone            String             @default("UTC")
+  locale              String             @default("ru")
+  defaultReminderTime String             @default("09:00")
   quietHoursStart     String?
   quietHoursEnd       String?
-  createdAt           DateTime     @default(now())
-  updatedAt           DateTime     @updatedAt
+  sessionVersion      Int                @default(0)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
   vehicles            Vehicle[]
   notifications       Notification[]
   pushSubscriptions   PushSubscription[]
   auditEvents         AuditEvent[]
+  vehicleMemberships  VehicleMember[]
 }
 
 model Vehicle {
-  id                           String             @id @default(uuid())
+  id                           String                @id @default(uuid())
   userId                       String
-  user                         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   displayName                  String
   make                         String
   model                        String
   year                         Int
-  currentMileage               Int                @default(0)
-  mileageUnit                  String             @default("km") // "km" | "mi"
+  currentMileage               Int                   @default(0)
+  mileageUnit                  String                @default("km") // "km" | "mi"
   plateNumberEncryptedOrMasked String?
   vinEncryptedOrMasked         String?
   fuelType                     String?
@@ -47,10 +49,10 @@ model Vehicle {
   engineDescription            String?
   photoUrl                     String?
   notes                        String?
-  isPrimary                    Boolean            @default(false)
+  isPrimary                    Boolean               @default(false)
   archivedAt                   DateTime?
-  createdAt                    DateTime           @default(now())
-  updatedAt                    DateTime           @updatedAt
+  createdAt                    DateTime              @default(now())
+  updatedAt                    DateTime              @updatedAt
   odometerReadings             OdometerReading[]
   maintenanceCategories        MaintenanceCategory[]
   maintenancePlans             MaintenancePlan[]
@@ -58,6 +60,13 @@ model Vehicle {
   observations                 Observation[]
   reminderRules                ReminderRule[]
   notifications                Notification[]
+  documents                    VehicleDocument[]
+  tireSets                     TireSet[]
+  fuelEntries                  FuelEntry[]
+  members                      VehicleMember[]
+  budgets                      VehicleBudget[]
+
+  @@index([userId, archivedAt])
 }
 
 model OdometerReading {
@@ -66,9 +75,11 @@ model OdometerReading {
   vehicle    Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   mileage    Int
   recordedAt DateTime @default(now())
-  source     String   // "manual" | "service_record" | "import" | "correction"
+  source     String // "manual" | "service_record" | "import" | "correction"
   comment    String?
   createdAt  DateTime @default(now())
+
+  @@index([vehicleId, recordedAt])
 }
 
 model MaintenanceCategory {
@@ -81,6 +92,8 @@ model MaintenanceCategory {
   isSystem         Boolean           @default(false)
   archivedAt       DateTime?
   maintenancePlans MaintenancePlan[]
+
+  @@index([vehicleId, archivedAt])
 }
 
 model MaintenancePlan {
@@ -91,9 +104,9 @@ model MaintenancePlan {
   category               MaintenanceCategory     @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   title                  String
   description            String?
-  kind                   String                  // "scheduled_service" | "inspection" | "observation" | "document"
+  kind                   String // "scheduled_service" | "inspection" | "observation" | "document"
   priority               String                  @default("normal") // "normal" | "high" | "critical"
-  scheduleMode           String                  // "date_only" | "mileage_only" | "whichever_comes_first" | "manual"
+  scheduleMode           String // "date_only" | "mileage_only" | "whichever_comes_first" | "manual"
   intervalDays           Int?
   intervalMileage        Int?
   lastCompletedAt        DateTime?
@@ -105,7 +118,7 @@ model MaintenancePlan {
   watchDaysThreshold     Int                     @default(90)
   watchMileageThreshold  Int                     @default(3000)
   manualStatus           String                  @default("auto") // "auto" | "watch" | "resolved"
-  status                 String?                 // cached status value (overdue, soon, watch, normal, unknown, disabled)
+  status                 String? // cached status value (overdue, soon, watch, normal, unknown, disabled)
   disabledAt             DateTime?
   archivedAt             DateTime?
   createdAt              DateTime                @default(now())
@@ -114,6 +127,8 @@ model MaintenancePlan {
   reminderRules          ReminderRule[]
   notifications          Notification[]
   observations           Observation[]
+
+  @@index([vehicleId, archivedAt, disabledAt])
 }
 
 model ServiceRecord {
@@ -137,6 +152,8 @@ model ServiceRecord {
   planItems      ServiceRecordPlanItem[]
   parts          ServicePart[]
   observations   Observation[]
+
+  @@index([vehicleId, state, performedAt])
 }
 
 model ServiceRecordPlanItem {
@@ -165,21 +182,23 @@ model ServicePart {
 }
 
 model Observation {
-  id                String         @id @default(uuid())
+  id                String           @id @default(uuid())
   vehicleId         String
-  vehicle           Vehicle        @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  vehicle           Vehicle          @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   maintenancePlanId String? // optional link to a specific plan (e.g. brakes plan)
   maintenancePlan   MaintenancePlan? @relation(fields: [maintenancePlanId], references: [id], onDelete: SetNull)
   title             String
   description       String?
-  priority          String         @default("normal") // "normal" | "high" | "critical"
-  state             String         @default("open") // "open" | "watching" | "service_planned" | "closed"
-  createdAt         DateTime       @default(now())
+  priority          String           @default("normal") // "normal" | "high" | "critical"
+  state             String           @default("open") // "open" | "watching" | "service_planned" | "closed"
+  createdAt         DateTime         @default(now())
   closedAt          DateTime?
   photoUrl          String?
   serviceRecordId   String?
-  serviceRecord     ServiceRecord? @relation(fields: [serviceRecordId], references: [id], onDelete: SetNull)
+  serviceRecord     ServiceRecord?   @relation(fields: [serviceRecordId], references: [id], onDelete: SetNull)
   reminderRules     ReminderRule[]
+
+  @@index([vehicleId, state])
 }
 
 model ReminderRule {
@@ -190,7 +209,7 @@ model ReminderRule {
   maintenancePlan   MaintenancePlan? @relation(fields: [maintenancePlanId], references: [id], onDelete: Cascade)
   observationId     String?
   observation       Observation?     @relation(fields: [observationId], references: [id], onDelete: Cascade)
-  triggerType       String           // "days_before" | "mileage_before" | "due_date" | "due_mileage" | "overdue_repeat" | "exact_datetime"
+  triggerType       String // "days_before" | "mileage_before" | "due_date" | "due_mileage" | "overdue_repeat" | "exact_datetime"
   triggerValue      String?
   scheduledAt       DateTime?
   channel           String           @default("in_app") // "in_app" | "email" | "push" | "telegram"
@@ -199,6 +218,10 @@ model ReminderRule {
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
   notifications     Notification[]
+
+  @@index([vehicleId, isEnabled])
+  @@index([maintenancePlanId])
+  @@index([observationId])
 }
 
 model Notification {
@@ -220,6 +243,13 @@ model Notification {
   readAt            DateTime?
   dedupeKey         String           @unique
   createdAt         DateTime         @default(now())
+  deliveryAttempts  Int              @default(0)
+  processingAt      DateTime?
+  lastError         String?
+
+  @@index([userId, readAt, createdAt])
+  @@index([status, scheduledFor])
+  @@index([reminderRuleId, status])
 }
 
 model PushSubscription {
@@ -231,6 +261,8 @@ model PushSubscription {
   auth      String
   userAgent String?
   createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model AuditEvent {
@@ -243,4 +275,101 @@ model AuditEvent {
   beforeJson String?
   afterJson  String?
   createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([entityType, entityId])
+}
+
+model RateLimitBucket {
+  key       String   @id
+  count     Int
+  resetAt   DateTime
+  updatedAt DateTime @updatedAt
+
+  @@index([resetAt])
+}
+
+model VehicleDocument {
+  id         String    @id @default(uuid())
+  vehicleId  String
+  vehicle    Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  type       String
+  title      String
+  number     String?
+  validFrom  DateTime?
+  expiresAt  DateTime?
+  fileUrl    String?
+  notes      String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([vehicleId, expiresAt])
+}
+
+model TireSet {
+  id               String    @id @default(uuid())
+  vehicleId        String
+  vehicle          Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  name             String
+  season           String
+  brand            String?
+  model            String?
+  size             String?
+  status           String    @default("storage")
+  storageLocation  String?
+  purchasedAt      DateTime?
+  installedAt      DateTime?
+  installedMileage Int?
+  totalDistance    Int       @default(0)
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([vehicleId, status])
+}
+
+model FuelEntry {
+  id         String   @id @default(uuid())
+  vehicleId  String
+  vehicle    Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  filledAt   DateTime
+  mileage    Int
+  liters     Decimal  @db.Decimal(10, 3)
+  totalCost  Decimal  @db.Decimal(12, 2)
+  currency   String
+  station    String?
+  fullTank   Boolean  @default(true)
+  receiptUrl String?
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([vehicleId, filledAt])
+  @@index([vehicleId, mileage])
+}
+
+model VehicleMember {
+  id        String   @id @default(uuid())
+  vehicleId String
+  vehicle   Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String   @default("viewer")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([vehicleId, userId])
+  @@index([userId])
+}
+
+model VehicleBudget {
+  id          String   @id @default(uuid())
+  vehicleId   String
+  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  currency    String
+  annualLimit Decimal  @db.Decimal(12, 2)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([vehicleId, currency])
 }

@@ -1,0 +1,17 @@
+.git
+.github
+.next
+.vercel
+node_modules
+output
+playwright-report
+test-results
+coverage
+
+.env
+.env.*
+!.env.example
+
+.DS_Store
+*.log
+*.tsbuildinfo

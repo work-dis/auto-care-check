@@ -10,6 +10,7 @@ import {
   ArrowRight,
   XCircle,
 } from 'lucide-react';
+import { formatMoney, type SupportedCurrency } from '@/domain/money/currencies';
 
 interface VehicleSummary {
   id: string;
@@ -49,11 +50,6 @@ function formatDate(dateStr: string): string {
     month: 'long',
     year: 'numeric',
   });
-}
-
-function formatCost(val: number, curr: string): string {
-  const symbol = curr === 'RUB' ? '₽' : curr;
-  return `${val.toLocaleString('ru-RU')} ${symbol}`;
 }
 
 export default function HistoryPage() {
@@ -133,9 +129,14 @@ export default function HistoryPage() {
     return true;
   });
 
-  const totalCosts = filtered
-    .filter((r) => r.state === 'confirmed')
-    .reduce((sum, r) => sum + Number(r.totalCost), 0);
+  const totalCosts = Object.entries(
+    filtered
+      .filter((record) => record.state === 'confirmed')
+      .reduce<Record<string, number>>((totals, record) => {
+        totals[record.currency] = (totals[record.currency] || 0) + Number(record.totalCost);
+        return totals;
+      }, {}),
+  );
 
   if (vehicles.length === 0 && !isLoading) {
     return (
@@ -200,9 +201,14 @@ export default function HistoryPage() {
             ))}
           </div>
           <div className="flex items-center gap-4">
-            {filtered.filter((r) => r.state === 'confirmed').length > 0 && (
-              <div className="text-sm text-neutral-400">
-                Итого: <span className="font-bold text-teal-400">{formatCost(totalCosts, 'RUB')}</span>
+            {totalCosts.length > 0 && (
+              <div className="flex flex-wrap items-center justify-end gap-2 text-sm text-neutral-400">
+                <span>Итого:</span>
+                {totalCosts.map(([currency, total]) => (
+                  <span key={currency} className="rounded-md bg-teal-500/10 px-2 py-1 font-bold text-teal-400">
+                    {formatMoney(total, currency as SupportedCurrency)}
+                  </span>
+                ))}
               </div>
             )}
             <input
@@ -265,7 +271,7 @@ export default function HistoryPage() {
                         <span>{formatDate(record.performedAt)}</span>
                         <span>{record.mileage.toLocaleString('ru-RU')} км</span>
                         {record.totalCost > 0 && (
-                          <span className="font-semibold text-teal-400">{formatCost(Number(record.totalCost), record.currency)}</span>
+                          <span className="font-semibold text-teal-400">{formatMoney(Number(record.totalCost), record.currency)}</span>
                         )}
                       </div>
                       {record.planItems.length > 0 && (
@@ -295,15 +301,15 @@ export default function HistoryPage() {
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       <div className="bg-neutral-900/60 rounded-lg p-2.5">
                         <span className="text-[10px] text-neutral-500 uppercase font-semibold">Работы</span>
-                        <p className="text-xs font-medium text-white mt-1">{formatCost(Number(record.laborCost), record.currency)}</p>
+                        <p className="text-xs font-medium text-white mt-1">{formatMoney(Number(record.laborCost), record.currency)}</p>
                       </div>
                       <div className="bg-neutral-900/60 rounded-lg p-2.5">
                         <span className="text-[10px] text-neutral-500 uppercase font-semibold">Запчасти</span>
-                        <p className="text-xs font-medium text-white mt-1">{formatCost(Number(record.partsCost), record.currency)}</p>
+                        <p className="text-xs font-medium text-white mt-1">{formatMoney(Number(record.partsCost), record.currency)}</p>
                       </div>
                       <div className="bg-neutral-900/60 rounded-lg p-2.5">
                         <span className="text-[10px] text-neutral-500 uppercase font-semibold">Итого</span>
-                        <p className="text-xs font-bold text-teal-400 mt-1">{formatCost(Number(record.totalCost), record.currency)}</p>
+                        <p className="text-xs font-bold text-teal-400 mt-1">{formatMoney(Number(record.totalCost), record.currency)}</p>
                       </div>
                       {record.serviceContact && (
                         <div className="bg-neutral-900/60 rounded-lg p-2.5">

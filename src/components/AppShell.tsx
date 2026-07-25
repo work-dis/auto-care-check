@@ -1,6 +1,6 @@
 'use client';
 
-import { UserCircle2 } from 'lucide-react';
+import { RefreshCw, UserCircle2, WifiOff } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import BottomNav from '@/components/BottomNav';
@@ -32,6 +32,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const isAuthRoute = AUTH_ROUTES.has(pathname);
   const [user, setUser] = useState<SessionUser | null>(null);
   const [isLoading, setIsLoading] = useState(!isAuthRoute);
+  const [shellError, setShellError] = useState<string | null>(null);
 
   const redirectTarget = useMemo(() => {
     if (!pathname || pathname === '/') {
@@ -48,6 +49,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
 
     setIsLoading(true);
+    setShellError(null);
     try {
       const response = await fetch('/api/me', { cache: 'no-store' });
 
@@ -64,7 +66,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       setUser(data.user);
     } catch (error) {
       console.error('Failed to load app shell user:', error);
-      router.replace(`/login?redirect=${encodeURIComponent(redirectTarget)}`);
+      setShellError('Не удалось связаться с сервером. Проверьте подключение и попробуйте снова.');
     } finally {
       setIsLoading(false);
     }
@@ -86,6 +88,26 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  if (shellError) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-[#0a0a0c] p-6 text-neutral-100">
+        <div className="w-full max-w-md rounded-2xl border border-neutral-800 bg-[#121214] p-6 text-center">
+          <WifiOff className="mx-auto h-10 w-10 text-amber-400" aria-hidden="true" />
+          <h1 className="mt-4 text-lg font-bold">Рабочее пространство недоступно</h1>
+          <p className="mt-2 text-sm leading-relaxed text-neutral-400">{shellError}</p>
+          <button
+            type="button"
+            onClick={() => void loadUser()}
+            className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-teal-500 px-5 text-sm font-bold text-black hover:bg-teal-400"
+          >
+            <RefreshCw className="h-4 w-4" aria-hidden="true" />
+            Повторить
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0a0a0c] text-neutral-100">
@@ -102,7 +124,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Sidebar user={user} />
-      <div className="flex-1 flex flex-col md:pl-64 min-h-screen pb-16 md:pb-0">
+      <div className="flex-1 flex min-h-screen flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] md:pl-64 md:pb-0">
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-neutral-900 bg-[#0c0c0e]/60 px-4 backdrop-blur-md md:px-8">
           <span className="text-sm font-bold tracking-tight text-neutral-400">
             Бортовой компьютер

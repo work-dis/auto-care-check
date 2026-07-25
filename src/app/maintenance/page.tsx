@@ -16,50 +16,14 @@ import {
 } from 'lucide-react';
 import { maintenancePlanSchema } from '@/lib/validation';
 import { useToast } from '@/components/ToastProvider';
-
-interface VehicleSummary {
-  id: string;
-  displayName: string;
-  isPrimary: boolean;
-}
-
-interface Category {
-  id: string;
-  name: string;
-  iconKey: string | null;
-}
-
-interface MaintenancePlan {
-  id: string;
-  categoryId: string;
-  category: Category;
-  title: string;
-  description: string | null;
-  kind: string;
-  priority: 'normal' | 'high' | 'critical';
-  scheduleMode: string;
-  intervalDays: number | null;
-  intervalMileage: number | null;
-  soonDaysThreshold: number;
-  soonMileageThreshold: number;
-  watchDaysThreshold: number;
-  watchMileageThreshold: number;
-  manualDueAt: string | null;
-  manualDueMileage: number | null;
-  manualStatus: string;
-  disabledAt: string | null;
-  lastCompletedAt: string | null;
-  lastCompletedMileage: number | null;
-  status?: 'overdue' | 'soon' | 'watch' | 'normal' | 'unknown' | 'disabled';
-  statusReason?: string;
-  nextDueAt?: string | null;
-  nextDueMileage?: number | null;
-}
-
-type PlanPriority = 'normal' | 'high' | 'critical';
-type PlanScheduleMode = 'date_only' | 'mileage_only' | 'whichever_comes_first' | 'manual';
-
-type StatusFilter = 'all' | 'overdue' | 'soon' | 'watch' | 'normal' | 'unknown' | 'disabled';
+import type {
+  Category,
+  MaintenancePlan,
+  PlanPriority,
+  PlanScheduleMode,
+  StatusFilter,
+  VehicleSummary,
+} from '@/features/maintenance/types';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; border: string; dot: string }> = {
   overdue: { label: 'Просрочено', color: 'text-red-400', bg: 'bg-red-950/10', border: 'border-red-500/20', dot: 'bg-red-500' },

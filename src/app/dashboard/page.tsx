@@ -17,63 +17,8 @@ import {
   X
 } from 'lucide-react';
 import { odometerSchema } from '@/lib/validation';
-
-interface VehicleSummary {
-  id: string;
-  displayName: string;
-  isPrimary: boolean;
-}
-
-interface DashboardPlanItem {
-  id: string;
-  title: string;
-  priority: string;
-  statusReason: string;
-  category: {
-    name: string;
-  };
-}
-
-interface DashboardData {
-  vehicle: {
-    id: string;
-    displayName: string;
-    currentMileage: number;
-    mileageUnit: string;
-  };
-  readinessScore: number;
-  activePlansCount: number;
-  plansSummary: {
-    overdue: number;
-    soon: number;
-    watch: number;
-    normal: number;
-    unknown: number;
-  };
-  openObservations: {
-    critical: number;
-    high: number;
-    normal: number;
-    total: number;
-  };
-  urgentItems: DashboardPlanItem[];
-  upcomingItems: DashboardPlanItem[];
-  watchItems: DashboardPlanItem[];
-  lastServiceRecord: {
-    id: string;
-    performedAt: string;
-    mileage: number;
-    serviceName: string;
-    totalCost: number;
-    currency: string;
-    notes: string | null;
-  } | null;
-  expenses: {
-    last30Days: number;
-    yearToDate: number;
-    currency: string;
-  };
-}
+import type { DashboardData, VehicleSummary } from '@/features/dashboard/types';
+import { formatMoney } from '@/domain/money/currencies';
 
 export default function DashboardPage() {
   const [vehicles, setVehicles] = useState<VehicleSummary[]>([]);
@@ -234,10 +179,7 @@ export default function DashboardPage() {
     }
   };
 
-  const formatCost = (val: number, curr: string) => {
-    const symbol = curr === 'RUB' ? '₽' : curr;
-    return `${val.toLocaleString('ru-RU')} ${symbol}`;
-  };
+  const formatCost = formatMoney;
 
   if (isLoading) {
     return (
@@ -550,21 +492,33 @@ export default function DashboardPage() {
                     Расходы на содержание
                   </h3>
 
-                  <div className="grid gap-4 grid-cols-2">
-                    <div className="bg-neutral-950/50 p-4 rounded-xl border border-neutral-800/40">
-                      <span className="text-[10px] uppercase font-bold text-neutral-500 block mb-1">За 30 дней</span>
-                      <span className="text-xl font-bold tracking-tight text-white">
-                        {formatCost(dashboard.expenses.last30Days, dashboard.expenses.currency)}
-                      </span>
+                  {dashboard.expenses.byCurrency.length === 0 ? (
+                    <p className="rounded-xl border border-neutral-800/40 bg-neutral-950/50 p-4 text-sm text-neutral-500">
+                      Подтверждённых расходов пока нет.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-[3rem_1fr_1fr] gap-2 px-3 text-xs font-semibold text-neutral-500">
+                        <span>Валюта</span>
+                        <span>30 дней</span>
+                        <span>С начала года</span>
+                      </div>
+                      {dashboard.expenses.byCurrency.map((expense) => (
+                        <div
+                          key={expense.currency}
+                          className="grid grid-cols-[3rem_1fr_1fr] items-center gap-2 rounded-xl border border-neutral-800/40 bg-neutral-950/50 p-3"
+                        >
+                          <span className="text-xs font-black text-teal-400">{expense.currency}</span>
+                          <span className="text-sm font-bold text-white">
+                            {formatCost(expense.last30Days, expense.currency)}
+                          </span>
+                          <span className="text-sm font-bold text-white">
+                            {formatCost(expense.yearToDate, expense.currency)}
+                          </span>
+                        </div>
+                      ))}
                     </div>
-
-                    <div className="bg-neutral-950/50 p-4 rounded-xl border border-neutral-800/40">
-                      <span className="text-[10px] uppercase font-bold text-neutral-500 block mb-1">С начала года (YTD)</span>
-                      <span className="text-xl font-bold tracking-tight text-white">
-                        {formatCost(dashboard.expenses.yearToDate, dashboard.expenses.currency)}
-                      </span>
-                    </div>
-                  </div>
+                  )}
                 </div>
 
                 <div className="mt-5 text-[10px] text-neutral-500 italic">

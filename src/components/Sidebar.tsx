@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Car, LayoutDashboard, Settings, Bell, Wrench, ClipboardList, Eye, FileClock } from 'lucide-react';
+import { BarChart3, Car, LayoutDashboard, Settings, Bell, Wrench, ClipboardList, Eye, FileClock, Fuel } from 'lucide-react';
 
 interface SidebarUser {
   username: string;
@@ -28,6 +28,8 @@ export default function Sidebar({ user }: SidebarProps) {
     { href: '/maintenance', label: 'Планы ТО', icon: ClipboardList },
     { href: '/observations', label: 'Наблюдения', icon: Eye },
     { href: '/history', label: 'История ТО', icon: FileClock },
+    { href: '/ownership', label: 'Эксплуатация', icon: Fuel },
+    { href: '/analytics', label: 'Аналитика', icon: BarChart3 },
     { href: '/notifications', label: 'Уведомления', icon: Bell },
     { href: '/settings', label: 'Настройки', icon: Settings },
   ];

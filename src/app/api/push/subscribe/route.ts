@@ -18,7 +18,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Upsert by endpoint
+    const existing = await prisma.pushSubscription.findUnique({ where: { endpoint } });
+    if (existing && existing.userId !== user.id) {
+      return NextResponse.json(
+        { error: { code: 'FORBIDDEN', message: 'Push endpoint принадлежит другому пользователю' } },
+        { status: 403 },
+      );
+    }
+
     const subscription = await prisma.pushSubscription.upsert({
       where: { endpoint },
       update: {

@@ -1,5 +1,6 @@
 import { checkAndGenerateNotifications } from '../lib/notificationEngine';
 import { prisma } from '../lib/prisma';
+import { deliverDueNotifications } from '../server/notifications/delivery.service';
 
 // On Vercel, this worker is not used — notifications are handled
 // by the Vercel Cron Job at /api/cron/notifications
@@ -20,10 +21,11 @@ async function runCycle(): Promise<void> {
   const startTime = Date.now();
   try {
     const { createdCount } = await checkAndGenerateNotifications();
+    const { sentCount, failedCount } = await deliverDueNotifications();
     const elapsed = Date.now() - startTime;
-    if (createdCount > 0) {
+    if (createdCount > 0 || sentCount > 0 || failedCount > 0) {
       console.log(
-        `[${new Date().toISOString()}] Created ${createdCount} notification(s) in ${elapsed}ms`
+        `[${new Date().toISOString()}] Notifications created=${createdCount} sent=${sentCount} failed=${failedCount} in ${elapsed}ms`
       );
     }
   } catch (err) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionUserId } from '@/lib/auth';
+import { hasVehicleAccess } from '@/server/vehicles/access';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
         where: { id: vehicleId },
       });
 
-      if (!vehicle || vehicle.userId !== userId) {
+      if (!vehicle || !(await hasVehicleAccess(vehicle.id, vehicle.userId, userId))) {
         return NextResponse.json(
           {
             error: {

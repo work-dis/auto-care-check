@@ -1,5 +1,8 @@
 # 03. Модель данных и бизнес-логика
 
+> Статус: исходная доменная спецификация. Фактический состав таблиц определяет
+> `prisma/schema.prisma`, а архитектурные инварианты — актуальная документация.
+
 ## 1. Ключевые сущности
 
 ### User
@@ -131,7 +134,7 @@
 - `action`, `beforeJson`, `afterJson`
 - `createdAt`
 
-## 2. Рассчёт следующего срока
+## 2. Расчёт следующего срока
 
 Для каждого активного `MaintenancePlan` определить:
 
@@ -173,7 +176,7 @@ remainingMileage = nextDueMileage - vehicle.currentMileage
 Для `whichever_comes_first` использовать худший из доступных показателей.
 
 | Условие | Статус |
-|---|---|
+| --- | --- |
 | `remainingDays < 0` или `remainingMileage < 0` | `overdue` |
 | `remainingDays <= soonDaysThreshold` или `remainingMileage <= soonMileageThreshold` | `soon` |
 | `remainingDays <= watchDaysThreshold` или `remainingMileage <= watchMileageThreshold` | `watch` |
@@ -183,7 +186,7 @@ remainingMileage = nextDueMileage - vehicle.currentMileage
 ### Пороговые значения по умолчанию
 
 | Тип | Soon | Watch |
-|---|---:|---:|
+| --- | ---: | ---: |
 | По дате | 30 дней | 90 дней |
 | По пробегу | 1 000 км | 3 000 км |
 
@@ -245,7 +248,10 @@ API/фронтенд должны возвращать не только enum, �
 ## 7. Правила целостности
 
 - Все денежные значения хранить в decimal/целых минимальных единицах, не в float.
+- Валюты `USD`, `BYN`, `RUB` и `EUR` агрегировать отдельно; не складывать и не
+  конвертировать без явного курса.
 - У каждого исторического поля, которое пользователь видит в прошлом, должен быть snapshot.
 - Один `ReminderRule` должен быть связан ровно с одним владельцем: планом, наблюдением либо точной датой.
 - `Notification.dedupeKey` уникален.
-- Все запросы к автомобилю проверяют `vehicle.userId === currentUser.id`.
+- Все запросы к автомобилю проверяют серверный доступ: владелец либо участник с
+  достаточной ролью `viewer`/`editor`.

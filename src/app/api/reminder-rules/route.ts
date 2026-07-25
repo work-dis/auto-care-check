@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionUserId } from '@/lib/auth';
 import { reminderRuleSchema } from '@/lib/validation';
+import { hasVehicleAccess } from '@/server/vehicles/access';
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
       const vehicle = await prisma.vehicle.findUnique({
         where: { id: vehicleId },
       });
-      if (!vehicle || vehicle.userId !== userId) {
+      if (!vehicle || !(await hasVehicleAccess(vehicle.id, vehicle.userId, userId))) {
         return NextResponse.json(
           { error: { code: 'FORBIDDEN', message: 'Доступ запрещен' } },
           { status: 403 }
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest) {
     const rules = await prisma.reminderRule.findMany({
       where: {
         vehicle: {
-          userId,
+          OR: [{ userId }, { members: { some: { userId } } }],
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -73,7 +74,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { maintenancePlanId, observationId, triggerType, triggerValue, sendAtLocalTime, isEnabled } = validation.data;
+    const {
+      maintenancePlanId,
+      observationId,
+      triggerType,
+      triggerValue,
+      scheduledAt,
+      channel,
+      sendAtLocalTime,
+      isEnabled,
+    } = validation.data;
 
     // Check ownership of the target plan or observation
     let targetVehicleId: string | null = null;
@@ -83,7 +93,7 @@ export async function POST(request: NextRequest) {
         where: { id: maintenancePlanId },
         include: { vehicle: true },
       });
-      if (!plan || plan.vehicle.userId !== userId) {
+      if (!plan || !(await hasVehicleAccess(plan.vehicleId, plan.vehicle.userId, userId, 'editor'))) {
         return NextResponse.json(
           { error: { code: 'FORBIDDEN', message: 'У вас нет доступа к этому плану обслуживания' } },
           { status: 403 }
@@ -95,7 +105,7 @@ export async function POST(request: NextRequest) {
         where: { id: observationId },
         include: { vehicle: true },
       });
-      if (!observation || observation.vehicle.userId !== userId) {
+      if (!observation || !(await hasVehicleAccess(observation.vehicleId, observation.vehicle.userId, userId, 'editor'))) {
         return NextResponse.json(
           { error: { code: 'FORBIDDEN', message: 'У вас нет доступа к этому наблюдению' } },
           { status: 403 }
@@ -136,6 +146,8 @@ export async function POST(request: NextRequest) {
         observationId,
         triggerType,
         triggerValue: triggerValue || null,
+        scheduledAt,
+        channel,
         sendAtLocalTime,
         isEnabled,
       },

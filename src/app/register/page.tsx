@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Wrench } from 'lucide-react';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -23,7 +24,12 @@ export default function RegisterPage() {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, username, password }),
+        body: JSON.stringify({
+          name,
+          username,
+          password,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+        }),
       });
 
       const data = await res.json();
@@ -46,16 +52,15 @@ export default function RegisterPage() {
     }
   }
 
-  const botUsername =
-    typeof window !== 'undefined'
-      ? process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
-      : '';
+  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || '';
 
   return (
     <div className="w-full max-w-md">
       {/* Logo / Branding */}
       <div className="text-center mb-8">
-        <div className="text-4xl mb-2">⚡</div>
+        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-teal-500 text-black">
+          <Wrench className="h-6 w-6" aria-hidden="true" />
+        </div>
         <h1 className="text-2xl font-bold text-neutral-100">AutoPulse</h1>
         <p className="text-neutral-500 text-sm mt-1">
           Цифровой бортовой журнал автомобиля
@@ -119,11 +124,12 @@ export default function RegisterPage() {
 
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-neutral-400 mb-1.5">
-              Пароль (минимум 6 символов)
+              Пароль (минимум 10 символов)
             </label>
             <input
               id="password"
               type="password"
+              minLength={10}
               placeholder="••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}

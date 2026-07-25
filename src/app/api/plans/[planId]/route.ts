@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionUserId } from '@/lib/auth';
 import { maintenancePlanSchema } from '@/lib/validation';
+import { hasVehicleAccess } from '@/server/vehicles/access';
 
 async function checkPlanOwnership(planId: string, userId: string) {
   const plan = await prisma.maintenancePlan.findUnique({
@@ -15,7 +16,7 @@ async function checkPlanOwnership(planId: string, userId: string) {
     return { errorStatus: 404, errorCode: 'NOT_FOUND', errorMessage: 'План обслуживания не найден' };
   }
 
-  if (plan.vehicle.userId !== userId) {
+  if (!(await hasVehicleAccess(plan.vehicleId, plan.vehicle.userId, userId, 'editor'))) {
     return { errorStatus: 403, errorCode: 'FORBIDDEN', errorMessage: 'У вас нет доступа к этому плану обслуживания' };
   }
 

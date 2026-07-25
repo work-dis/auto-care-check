@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionUserId } from '@/lib/auth';
 import { calculatePlanStatus, calculateReadinessScore } from '@/lib/statusEngine';
+import { SUPPORTED_CURRENCIES, type SupportedCurrency } from '@/domain/money/currencies';
+import { hasVehicleAccess } from '@/server/vehicles/access';
 
 export async function GET(
   request: NextRequest,
@@ -23,7 +25,7 @@ export async function GET(
       );
     }
 
-    if (vehicle.userId !== userId) {
+    if (!(await hasVehicleAccess(vehicle.id, vehicle.userId, userId))) {
       return NextResponse.json(
         { error: { code: 'FORBIDDEN', message: 'Доступ запрещен' } },
         { status: 403 }
@@ -132,22 +134,28 @@ export async function GET(
       },
     });
 
-    let last30Days = 0;
-    let yearToDate = 0;
-    let currency = 'RUB';
+    const expensesByCurrency = new Map<
+      SupportedCurrency,
+      { currency: SupportedCurrency; last30Days: number; yearToDate: number }
+    >(
+      SUPPORTED_CURRENCIES.map((currency) => [
+        currency,
+        { currency, last30Days: 0, yearToDate: 0 },
+      ]),
+    );
 
     for (const record of serviceRecords) {
+      if (!SUPPORTED_CURRENCIES.includes(record.currency as SupportedCurrency)) continue;
       const cost = Number(record.totalCost);
       const date = new Date(record.performedAt);
+      const expense = expensesByCurrency.get(record.currency as SupportedCurrency);
+      if (!expense) continue;
 
       if (date >= thirtyDaysAgo) {
-        last30Days += cost;
+        expense.last30Days += cost;
       }
       if (date >= startOfYear) {
-        yearToDate += cost;
-      }
-      if (record.currency) {
-        currency = record.currency;
+        expense.yearToDate += cost;
       }
     }
 
@@ -187,9 +195,9 @@ export async function GET(
         openObservations: openObsCounts,
         lastServiceRecord,
         expenses: {
-          last30Days,
-          yearToDate,
-          currency,
+          byCurrency: [...expensesByCurrency.values()].filter(
+            (expense) => expense.last30Days > 0 || expense.yearToDate > 0,
+          ),
         },
       },
     });

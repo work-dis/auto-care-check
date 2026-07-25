@@ -40,7 +40,11 @@ export function useCloudinaryUpload(): UseCloudinaryUploadReturn {
 
       if (!response.ok) {
         const body = await response.json().catch(() => null);
-        throw new Error(body?.error || 'Upload failed');
+        throw new Error(
+          typeof body?.error === 'string'
+            ? body.error
+            : body?.error?.message || 'Не удалось загрузить изображение',
+        );
       }
 
       const data = await response.json();

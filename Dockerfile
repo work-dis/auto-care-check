@@ -23,6 +23,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN npm run build
 
+# Self-hosted notification worker
+FROM builder AS worker
+CMD ["npx", "tsx", "src/worker/cron.ts"]
+
 # Production image, copy all the files and run next
 FROM base AS runner
 WORKDIR /app

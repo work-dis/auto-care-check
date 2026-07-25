@@ -2,52 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { signToken } from '@/lib/jwt';
 import { telegramAuthSchema } from '@/lib/validation';
-import crypto from 'crypto';
-
-/**
- * Validate Telegram Login Widget initData using HMAC-SHA256.
- * See: https://core.telegram.org/widgets/login#checking-authorization
- */
-function validateTelegramInitData(initData: string, botToken: string): Record<string, string> | null {
-  const params = new URLSearchParams(initData);
-  const hash = params.get('hash');
-  if (!hash) return null;
-
-  // Build data-check-string: all key=value sorted alphabetically, excluding hash
-  const pairs: string[] = [];
-  for (const [key, value] of params.entries()) {
-    if (key !== 'hash') {
-      pairs.push(`${key}=${value}`);
-    }
-  }
-  pairs.sort();
-  const dataCheckString = pairs.join('\n');
-
-  // HMAC-SHA256: first derive secret key from bot token using SHA256("WebAppData"), then sign
-  const secretKey = crypto
-    .createHmac('sha256', 'WebAppData')
-    .update(botToken)
-    .digest();
-
-  const computedHash = crypto
-    .createHmac('sha256', secretKey)
-    .update(dataCheckString)
-    .digest('hex');
-
-  if (computedHash !== hash) return null;
-
-  // Return all validated params
-  const result: Record<string, string> = {};
-  for (const [key, value] of params.entries()) {
-    if (key !== 'hash') {
-      result[key] = value;
-    }
-  }
-  return result;
-}
+import { verifyTelegramLoginWidget } from '@/integrations/telegram/loginWidget';
+import { consumeRateLimit, getRequestIdentity } from '@/server/shared/rateLimit';
 
 export async function POST(request: NextRequest) {
   try {
+    const rateLimit = await consumeRateLimit(`telegram:${getRequestIdentity(request)}`, {
+      limit: 10,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: { code: 'RATE_LIMITED', message: 'Слишком много попыток входа' } },
+        { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfterSeconds) } },
+      );
+    }
     const body = await request.json();
     const validation = telegramAuthSchema.safeParse(body);
 
@@ -73,7 +42,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate the Telegram init data
-    const telegramData = validateTelegramInitData(initData, botToken);
+    const telegramData = verifyTelegramLoginWidget(initData, botToken);
     if (!telegramData) {
       return NextResponse.json(
         { error: { code: 'INVALID_TELEGRAM_DATA', message: 'Недействительные данные Telegram' } },
@@ -131,11 +100,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const token = signToken({ userId: user.id, username: user.username });
+    const token = signToken({
+      userId: user.id,
+      username: user.username,
+      sessionVersion: user.sessionVersion,
+    });
 
     const response = NextResponse.json({
       user: { id: user.id, username: user.username, name: user.name, telegramAvatarUrl: user.telegramAvatarUrl },
-      token,
     });
 
     // Set JWT cookie (same as login route)

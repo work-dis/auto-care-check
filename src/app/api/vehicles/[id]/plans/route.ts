@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getSessionUserId } from '@/lib/auth';
 import { maintenancePlanSchema } from '@/lib/validation';
 import { calculatePlanStatus } from '@/lib/statusEngine';
+import { hasVehicleAccess } from '@/server/vehicles/access';
 
 export async function GET(
   request: NextRequest,
@@ -24,7 +25,7 @@ export async function GET(
       );
     }
 
-    if (vehicle.userId !== userId) {
+    if (!(await hasVehicleAccess(vehicle.id, vehicle.userId, userId))) {
       return NextResponse.json(
         { error: { code: 'FORBIDDEN', message: 'У вас нет доступа к этому автомобилю' } },
         { status: 403 }
@@ -121,7 +122,7 @@ export async function POST(
       );
     }
 
-    if (vehicle.userId !== userId) {
+    if (!(await hasVehicleAccess(vehicle.id, vehicle.userId, userId, 'editor'))) {
       return NextResponse.json(
         {
           error: {

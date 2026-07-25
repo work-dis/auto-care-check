@@ -6,12 +6,18 @@
 
 ## 1. Роль и контекст
 
-Вы выступаете в роли **Senior Full-Stack Engineer**, **Product-Minded UX Engineer** и **Технического Архитектора**. Ваша задача — построить надежное, PWA-совместимое MVP-приложение для контроля обслуживания автомобиля с интерфейсом в стиле современной приборной панели.
+Вы выступаете в роли **Senior Full-Stack Engineer**, **Product-Minded UX Engineer** и **Технического Архитектора**. Ваша задача — безопасно развивать PWA-приложение для контроля обслуживания автомобиля с интерфейсом в стиле современной приборной панели.
 
 ### Текущее состояние проекта
-- Кодовая база пуста (находится на этапе инициализации).
-- Все исходные ТЗ-файлы расположены в папке [autopulse_car_service_specs/](file:///Users/miko/Documents/auto-care-check/autopulse_car_service_specs/).
-- Разработка должна вестись итеративно. Для каждой итерации используйте соответствующий промпт из [09_ITERATION_PROMPTS.md](file:///Users/miko/Documents/auto-care-check/autopulse_car_service_specs/09_ITERATION_PROMPTS.md).
+
+- Этапы P0–P7 реализованы; это действующая кодовая база, а не пустой шаблон.
+- Актуальная техническая документация начинается с
+  [`docs/README.md`](../docs/README.md).
+- Файлы в [`autopulse_car_service_specs/`](../autopulse_car_service_specs/)
+  являются архивной исходной спецификацией и не заменяют сверку с кодом,
+  миграциями и тестами.
+- Текущее состояние и проверки зафиксированы в
+  [`completion-report.md`](../docs/implementation/completion-report.md).
 
 ---
 
@@ -20,28 +26,37 @@
 Вы должны придерживаться следующего стека и правил организации кода:
 
 - **Frontend:** Next.js (React), TypeScript (strict mode), Tailwind CSS, библиотека компонентов (уровня shadcn/ui), Lucide icons.
-- **Backend:** TypeScript API на Fastify либо Server Routes в Next.js. **Выбрать один подход** и не дублировать доменную логику.
+- **Backend:** Next.js Route Handlers; не добавлять параллельный Fastify API и
+  не дублировать доменную логику.
 - **Валидация:** Схемы **Zod** для всех форм на клиенте и входящих запросов на API.
 - **База данных:** PostgreSQL + Prisma ORM.
 - **Фоновые задачи:** Отдельный worker/cron для рассылки уведомлений (не отправлять уведомления внутри HTTP-запроса пользователя).
-- **Инфраструктура:** Docker Compose для локальной разработки и деплоя (контейнеры: web/api, worker, postgres).
+- **Инфраструктура:** Vercel Cron в production либо Docker Compose с `web`,
+  `worker` и `postgres` для self-hosted запуска.
 - **Изоляция доменной логики:** Логика расчета статусов, дат обслуживания и сброса уведомлений должна находиться в Domain/Service Layer, а не в UI-компонентах, и быть полностью покрыта тестами.
 
 ---
 
 ## 3. Бизнес-логика и правила предметной области (Domain Rules)
 
-При проектировании и написании кода строго следуйте спецификации [03_DATA_MODEL_AND_BUSINESS_LOGIC.md](file:///Users/miko/Documents/auto-care-check/autopulse_car_service_specs/03_DATA_MODEL_AND_BUSINESS_LOGIC.md):
+При проектировании и написании кода сверяйтесь с
+[`03_DATA_MODEL_AND_BUSINESS_LOGIC.md`](../autopulse_car_service_specs/03_DATA_MODEL_AND_BUSINESS_LOGIC.md),
+но источником истины для фактической схемы остаются Prisma migrations и
+`prisma/schema.prisma`.
 
 ### А. Модель данных и сущности
+
 - **User:** Хранит email, имя, timezone, locale, defaultReminderTime, quietHoursStart/End.
 - **Vehicle:** Привязана к User. Поля: displayName, make, model, year, currentMileage, mileageUnit, plateNumberEncryptedOrMasked, vinEncryptedOrMasked, fuelType, transmission, engineDescription, photoUrl, notes, isPrimary, archivedAt.
 - **OdometerReading:** История пробега. Поля: mileage, recordedAt, source (manual | service_record | import | correction), comment.
 - **MaintenancePlan:** Карточка регулярной работы/ТО. Поля: kind (scheduled_service | inspection | observation | document), priority (normal | high | critical), scheduleMode (date_only | mileage_only | whichever_comes_first | manual), intervalDays, intervalMileage, lastCompletedAt, lastCompletedMileage, manualDueAt, manualDueMileage, soonDaysThreshold, soonMileageThreshold, watchDaysThreshold, watchMileageThreshold, manualStatus (auto | watch | resolved), disabledAt, archivedAt.
 - **ServiceRecord:** Завершенная работа. Поля: performedAt, mileage, serviceName, laborCost, partsCost, totalCost, currency, notes, receiptUrl, state (confirmed | voided | draft), voidReason.
 - **ReminderRule:** Правило напоминания (triggerType: days_before | mileage_before | due_date | due_mileage | overdue_repeat | exact_datetime).
+- **Эксплуатация:** `VehicleDocument`, `TireSet`, `FuelEntry`, `VehicleMember`
+  и `VehicleBudget`.
 
 ### Б. Расчет следующего срока (`nextDueAt` / `nextDueMileage`)
+
 - `nextDueAt`:
   - `manualDueAt`, если `scheduleMode === manual` и он задан;
   - `lastCompletedAt + intervalDays`, если есть дата последней работы и интервал;
@@ -52,6 +67,7 @@
   - `null` в остальных случаях.
 
 ### В. Расчет статусов обслуживания
+
 - `remainingDays = nextDueAt - now` (в днях, с учетом timezone пользователя).
 - `remainingMileage = nextDueMileage - vehicle.currentMileage`.
 - **Whichever comes first:** Статус становится критическим по наихудшему (наиболее раннему) из двух показателей.
@@ -65,6 +81,7 @@
 - **Человеческое объяснение (Status Reason):** API и UI должны всегда возвращать текстовое объяснение статуса (например, *"Просрочено на 15 дней"*, *"Осталось 18 дней или 870 км"*).
 
 ### Г. Индекс «Готовность по обслуживанию» (Readiness Score)
+
 - Название в UI: **«Готовность по обслуживанию»** (строго запрещено использовать слова "здоровье" или "диагностика").
 - Должен присутствовать дисклеймер: индекс не является технической диагностикой.
 - Формула расчета:
@@ -80,8 +97,10 @@
   - Если активных планов < 3, точное число не показывать, вместо этого выводить: *«Заполните еще N пунктов, чтобы видеть сводку»*.
 
 ### Д. Логика завершения и отмены работ
+
 - **При подтверждении ServiceRecord:**
-  1. Проверить права доступа (`vehicle.userId === currentUser.id`).
+  1. Проверить права через `requireVehicleAccess`: owner/editor для изменения,
+     viewer только для чтения.
   2. Проверить корректность данных (пробег не может уменьшаться бесконтрольно, уменьшение возможно только как `correction` с указанием причины).
   3. Создать снапшоты названий работ и цен (чтобы будущие изменения планов не ломали историю).
   4. Создать/обновить `OdometerReading`.
@@ -100,12 +119,15 @@
 - **Главная страница (/dashboard):** Должна включать блок Readiness Score, виджеты «Сделать сейчас», «Скоро понадобится», «Под присмотром», расходы и последнюю работу, а также быструю кнопку «Обновить пробег».
 - **Мобильный интерфейс:** Формы ввода на мобильных должны открываться в полноэкранных или нижних шторках (bottom sheets) для удобного ввода одной рукой. Нижняя навигация для мобильных, боковая панель (sidebar) для десктопа.
 - **Без фейковых брендов:** Исключить использование логотипов реальных автопроизводителей, интерфейс должен быть нейтральным.
+- **Деньги:** Поддерживать только `USD`, `BYN`, `RUB`, `EUR`; агрегировать
+  отдельно и не выполнять неявную конвертацию.
 
 ---
 
 ## 5. Требования к тестированию (13 обязательных тест-кейсов)
 
 Напишите автоматические тесты (например, с использованием Jest/Vitest) как минимум на следующие 13 сценариев:
+
 1. Расчет срока только по дате.
 2. Расчет срока только по пробегу.
 3. «Что наступит раньше» — дата наступает раньше пробега.
@@ -125,15 +147,22 @@
 ## 6. Алгоритм работы для ИИ-агента
 
 При выполнении каждой задачи:
+
 1. **Проведите аудит:** Изучите текущую файловую структуру и состояние базы данных (если есть).
-2. **Спланируйте изменения:** Создайте или обновите `implementation_plan.md` в папке `.agents/` (или используйте стандартные файлы сессии).
-3. **Разрабатывайте строго по шагам:** Не пытайтесь написать весь проект за один раз. Двигайтесь по итерациям из `09_ITERATION_PROMPTS.md`.
+2. **Спланируйте изменения:** Используйте план текущей задачи; не переписывайте
+   завершённую roadmap P0–P7 для локального исправления.
+3. **Разрабатывайте по небольшим проверяемым шагам:** сохраняйте совместимость
+   API и миграций, отделяйте несвязанные изменения.
 4. **Пишите тесты:** Каждая итерация должна сопровождаться тестами для бизнес-логики.
 5. **Запускайте проверки:** Перед завершением работы обязательно запустите lint, сборку и тесты:
+
    ```bash
    npm run lint
    npm run typecheck
-   npm test
+   npm run test:unit
+   npm run test:integration
    npm run build
+   npm run test:e2e
    ```
+
 6. **Документируйте результат:** В конце сессии предоставьте отчет: что сделано, какие файлы изменены, какие тесты запущены.

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Plus, Car, Trash2, Calendar, Gauge, AlertTriangle, X } from 'lucide-react';
+import { Plus, Car, Trash2, Calendar, Gauge, AlertTriangle, X, Star } from 'lucide-react';
 import { vehicleSchema } from '@/lib/validation';
 import { useToast } from '@/components/ToastProvider';
 
@@ -20,6 +20,7 @@ interface Vehicle {
   transmission: string | null;
   engineDescription: string | null;
   notes: string | null;
+  isPrimary: boolean;
 }
 
 export default function VehiclesPage() {
@@ -174,6 +175,23 @@ export default function VehiclesPage() {
     }
   };
 
+  const handleSetPrimary = async (id: string) => {
+    try {
+      const response = await fetch(`/api/vehicles/${id}/primary`, { method: 'POST' });
+      const data = await response.json();
+      if (!response.ok) {
+        showToast(data.error?.message || 'Не удалось выбрать основной автомобиль', 'error');
+        return;
+      }
+      setVehicles((current) =>
+        current.map((vehicle) => ({ ...vehicle, isPrimary: vehicle.id === id })),
+      );
+      showToast('Основной автомобиль обновлён', 'success');
+    } catch {
+      showToast('Сетевая ошибка при выборе автомобиля', 'error');
+    }
+  };
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -236,11 +254,19 @@ export default function VehiclesPage() {
               {/* Top Row info */}
               <div className="space-y-3">
                 <div className="flex items-start justify-between">
-                  <Link href={`/vehicles/${v.id}`} className="hover:underline">
-                    <h3 className="text-lg font-bold text-white group-hover:text-teal-400 transition-colors">
-                      {v.displayName}
-                    </h3>
-                  </Link>
+                  <div className="min-w-0">
+                    <Link href={`/vehicles/${v.id}`} className="hover:underline">
+                      <h3 className="truncate text-lg font-bold text-white transition-colors group-hover:text-teal-400">
+                        {v.displayName}
+                      </h3>
+                    </Link>
+                    {v.isPrimary && (
+                      <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-teal-500/10 px-2 py-1 text-xs font-semibold text-teal-400">
+                        <Star className="h-3 w-3 fill-current" aria-hidden="true" />
+                        Основной
+                      </span>
+                    )}
+                  </div>
                   {archivingId === v.id ? (
                     <div className="flex items-center gap-1">
                       <span className="text-[10px] text-red-400 font-medium">Удалить?</span>
@@ -304,6 +330,16 @@ export default function VehiclesPage() {
                   </span>
                 </div>
               </div>
+              {!v.isPrimary && (
+                <button
+                  type="button"
+                  onClick={() => void handleSetPrimary(v.id)}
+                  className="mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-neutral-800 px-3 text-sm font-semibold text-neutral-300 transition-colors hover:border-teal-500/40 hover:bg-teal-500/10 hover:text-teal-300"
+                >
+                  <Star className="h-4 w-4" aria-hidden="true" />
+                  Сделать основным
+                </button>
+              )}
             </div>
           ))}
         </div>

@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionUserId } from '@/lib/auth';
 import { odometerSchema } from '@/lib/validation';
+import { assertValidOdometerChange } from '@/domain/odometer/rules';
+import { apiErrorResponse } from '@/server/shared/apiError';
+import { hasVehicleAccess } from '@/server/vehicles/access';
 
 export async function GET(
   request: NextRequest,
@@ -28,7 +31,7 @@ export async function GET(
       );
     }
 
-    if (vehicle.userId !== userId) {
+    if (!(await hasVehicleAccess(vehicle.id, vehicle.userId, userId))) {
       return NextResponse.json(
         {
           error: {
@@ -86,7 +89,7 @@ export async function POST(
       );
     }
 
-    if (vehicle.userId !== userId) {
+    if (!(await hasVehicleAccess(vehicle.id, vehicle.userId, userId, 'editor'))) {
       return NextResponse.json(
         {
           error: {
@@ -115,23 +118,12 @@ export async function POST(
 
     const { mileage, source, comment, recordedAt } = parsed.data;
 
-    // 3. Business logic rule: Decrease in mileage requires source=correction and a comment
-    if (mileage < vehicle.currentMileage) {
-      if (source !== 'correction' || !comment || comment.trim() === '') {
-        return NextResponse.json(
-          {
-            error: {
-              code: 'VALIDATION_ERROR',
-              message: 'Уменьшение пробега допускается только как "корректировка" с обязательным указанием причины.',
-              fieldErrors: {
-                mileage: 'Для уменьшения пробега выберите тип "Корректировка" и укажите причину в комментарии',
-              },
-            },
-          },
-          { status: 400 }
-        );
-      }
-    }
+    assertValidOdometerChange({
+      currentMileage: vehicle.currentMileage,
+      mileage,
+      source,
+      comment,
+    });
 
     // 4. Update mileage and create reading inside a transaction
     const result = await prisma.$transaction(async (tx) => {
@@ -158,15 +150,6 @@ export async function POST(
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
-    console.error('Error adding odometer reading:', error);
-    return NextResponse.json(
-      {
-        error: {
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Произошла внутренняя ошибка сервера при обновлении пробега',
-        },
-      },
-      { status: 500 }
-    );
+    return apiErrorResponse(error, 'Произошла внутренняя ошибка сервера при обновлении пробега');
   }
 }
